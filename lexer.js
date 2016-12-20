@@ -84,6 +84,7 @@ function applyLexicalScope(immutableConcreteJson, parentEnv)
     case "number" :
     case "string" :
     case "operator" :
+    case "blank" :
       // Do nothing
       break;
 
@@ -104,7 +105,11 @@ function applyLexicalScope(immutableConcreteJson, parentEnv)
     case "fold" :
       // A thing to do!
       newScopesToApply.push(
-          immutableConcreteJson.getIn(["blocks", i, "code", "tape"]));
+        {
+          blockIndex: i,
+          tape: 
+            immutableConcreteJson.getIn(["blocks", i, "code", "tape"])
+        });
       break;
     default :
       // Unrecognized block!
@@ -126,8 +131,8 @@ function applyLexicalScope(immutableConcreteJson, parentEnv)
   {
     immutableConcreteJson =
       immutableConcreteJson.setIn(
-        ["blocks", i, "code", "tape"],
-        applyLexicalScope(newScopesToApply[i], environment));
+        ["blocks", newScopesToApply[i].blockIndex, "code", "tape"],
+        applyLexicalScope(newScopesToApply[i].tape, environment));
   }
 
   // Attach the environment to the current thing
