@@ -1,0 +1,46 @@
+/* Test input */
+/* Look at matching output file */
+/* Blank blocks here are complete in output, */
+/* Blank lines should be blank lines in output */
+/* Comments here should be empty lines in output */
+/* Execute with ./run_all */
+
+
+/* Noops */
+
+1 3 5 _ 
+_ _ _ _
+55 [ 1 * _ ]
+_
+
+/* Basic Operations */
+
+1 1 + _
+12 1 - _
+12 35 - _
+1 1 * _
+234 456456 * _
+13 10 % _
+360 120 / _
+40 ! _
+!40 ! _
+
+/* Stringing Operations together */
+
+2 2 + _ 5 + _ 17 + _
+
+
+/* If truthy, use arg 2; if falsey, user arg 3 */
+
+40 0 1 ? _
+!40 0 1 ? _
+
+/* Return anytime */
+
+1 1 + _ 23 * _ return 23234 * _ 234 - _
+
+/* Call and response! */
+
+23 [ 23 23 * _ ] call _
+23 [ [ [ [ [ [ [ 4 ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _
+23 [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ 4 ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _

@@ -1,0 +1,167 @@
+#!/usr/bin/env node
+
+var interpreter = require("../interpreter");
+var fs = require("fs");
+var static_tests_input_path = "./static_test_input.conc";
+var static_tests_output_path = "./static_test_output.conc";
+var inputs;
+var expectedOutputs;
+
+fs.readFile(
+  static_tests_input_path,
+  function (error, fileBuffer)
+  {
+    if (error)
+    {
+      throw new Error(
+        "Couldn't read input file " +
+        "\"" +
+        static_tests_input_path +
+        "\": "
+        , error);
+    }
+
+    inputs =
+      fileBuffer.toString("utf8").split("\n");
+
+    fs.readFile(
+      static_tests_output_path,
+      function (error, fileBuffer2)
+      {
+        var lengthInput = inputs.length;
+        var lengthOutput;
+        var i;
+        var actualOutput;
+        var misses = [];
+        var errors = [];
+        var didErr = false;
+
+        if (error)
+        {
+          throw new Error(
+            "Error: Couldn't read output file " +
+            "\"" +
+            static_tests_output_path +
+            "\": "
+            , error);
+        }
+        
+        expectedOutputs =
+          fileBuffer2.toString("utf8").split("\n");
+        
+        lengthOutput = expectedOutputs.length;
+
+        if (lengthInput !== lengthOutput)
+        {
+          throw new Error("Input/output length mismatch")
+        }
+
+        for (i = 0; i < lengthInput; i++)
+        {
+          didErr = false;
+          
+          try 
+          {
+            actualOutput = 
+              interpreter.prettyExecuteString(inputs[i]);
+          }
+          catch (error)
+          {
+            errors.push(
+            {
+              message: error.message,
+              stack: error.stack,
+              errorType: 
+                error instanceof interpreter.SyntaxError
+                ? "SyntaxError"
+                : "RuntimeError",
+              line: i,
+              in: inputs[i],
+              out: actualOutput,
+              expected: expectedOutputs[i]  
+            });
+
+            didErr = true;
+          } 
+          
+          if (didErr)
+          {
+            continue;
+          }
+
+          if (
+            actualOutput !== expectedOutputs[i]
+            )
+          {
+            misses.push(
+            {
+              line: i,
+              in: inputs[i],
+              out: actualOutput,
+              expected: expectedOutputs[i]  
+            });
+          }
+        }
+
+        for (i = 0; i < errors.length; i++)
+        {
+          console.log(
+            "%s" +
+            "\n" +
+            "%s" +
+            "\n" +
+            "Line " + 
+            "%s" +
+            ": " +
+            "\n" +
+            "Thought input" +
+            "\n" +
+            "%s" +
+            "\n" +
+            "would be" +
+            "\n" +
+            "%s" +
+            "\n" +
+            "but actually " +
+            "\n" +
+            "%s" +
+            "\n",
+            errors[i].errorType,
+            errors[i].message,
+            errors[i].line,
+            errors[i].in,
+            errors[i].expected,
+            errors[i].errorType);
+        }
+
+        for (i = 0; i < misses.length; i++)
+        {
+          console.log(
+            "Line " + 
+            "%s" +
+            ": " +
+            "\n" +
+            "Thought input" +
+            "\n" +
+            "%s" +
+            "\n" +
+            "would be" +
+            "\n" +
+            "%s" +
+            "\n" +
+            "but actually " +
+            "\n" +
+            "%s" +
+            "\n",
+            misses[i].line,
+            misses[i].in,
+            misses[i].expected,
+            misses[i].out); 
+        }
+
+        process.exit(
+          misses.length === 0
+          ? 0
+          : 1);
+      });
+  });
