@@ -577,178 +577,177 @@ function executeStepIn(concreteJson)
   // Increment the step counter
   immutableConcreteJson = immutableConcreteJson.set("midStep", false);
   immutableConcreteJson = immutableConcreteJson.set("step", step + 1);
+
   // Finally, give back the new version
   return immutableConcreteJson;
 
-  
-    // Do call things
-    //   increase stack level by 1
-    //   use inputs from left for inputs to code
+  // Do call things
+  //   increase stack level by 1
+  //   use inputs from left for inputs to code
+  function doAllTheCallThings(immutableConcreteJson)
+  {
+    // Set it to initial
+    stackLevel = 0;
 
-    function doAllTheCallThings(immutableConcreteJson)
-    {
-      // Set it to initial
-      stackLevel = 0;
+    // And in the representation
+    immutableConcreteJson = immutableConcreteJson.set("stackLevel", stackLevel);
 
-      // And in the representation
-      immutableConcreteJson = immutableConcreteJson.set("stackLevel", stackLevel);
-
-      // Create the call stack with one level
-      immutableConcreteJson =
-        immutableConcreteJson
-          .set(
-            "callStack",
-            Immutable.fromJS(
-              [
-                {
-                  blocks: {},
-                  environment: {},
-                  runner: 
-                  {
-                    index: 0,
-                    stackLevel: stackLevel
-                  }
-
-                }
-              ]
-            ));
-
-      // Perform lexical analysis before using the blocks for the first time
-      immutableConcreteJson = 
-        lexer.applyLexicalScope(
-          immutableConcreteJson,
-          Immutable.Map()); // TODO: Use this environment Map to link in plugins!!
-
-      // Set the initial code in the stack
-      immutableConcreteJson =
-        immutableConcreteJson.setIn(
-          ["callStack", stackLevel, "blocks"],
-          immutableConcreteJson.get("blocks"));
-
-      // Add the lexical environment from the base tape to the stack frame  
-      immutableConcreteJson = 
-        immutableConcreteJson.setIn(
-          ["callStack", stackLevel, "environment"],
-          immutableConcreteJson.get("environment"));
-
-      immutableConcreteJson =
-        immutableConcreteJson
-          .setIn(
-            ["callStack", stackLevel + 1],
-            Immutable.fromJS(
-            {
-              blocks: {},
-              environment: {},
-              runner:
+    // Create the call stack with one level
+    immutableConcreteJson =
+      immutableConcreteJson
+        .set(
+          "callStack",
+          Immutable.fromJS(
+            [
               {
-                index: 0,
-                stackLevel: stackLevel + 1
+                blocks: {},
+                environment: {},
+                runner: 
+                {
+                  index: 0,
+                  stackLevel: stackLevel
+                }
+
               }
-            }));
+            ]
+          ));
 
-      immutableConcreteJson =
-        immutableConcreteJson.set("callStack", callStack);
+    // Perform lexical analysis before using the blocks for the first time
+    immutableConcreteJson = 
+      lexer.applyLexicalScope(
+        immutableConcreteJson,
+        Immutable.Map()); // TODO: Use this environment Map to link in plugins!!
 
-      immutableConcreteJson =
-        immutableConcreteJson.set("stackLevel", stackLevel + 1);
+    // Set the initial code in the stack
+    immutableConcreteJson =
+      immutableConcreteJson.setIn(
+        ["callStack", stackLevel, "blocks"],
+        immutableConcreteJson.get("blocks"));
+
+    // Add the lexical environment from the base tape to the stack frame  
+    immutableConcreteJson = 
+      immutableConcreteJson.setIn(
+        ["callStack", stackLevel, "environment"],
+        immutableConcreteJson.get("environment"));
+
+    immutableConcreteJson =
+      immutableConcreteJson
+        .setIn(
+          ["callStack", stackLevel + 1],
+          Immutable.fromJS(
+          {
+            blocks: {},
+            environment: {},
+            runner:
+            {
+              index: 0,
+              stackLevel: stackLevel + 1
+            }
+          }));
+
+    immutableConcreteJson =
+      immutableConcreteJson.set("callStack", callStack);
+
+    immutableConcreteJson =
+      immutableConcreteJson.set("stackLevel", stackLevel + 1);
 
 
-      // Actually add the blocks from the tape to the stack frame  
-      immutableConcreteJson = 
-        immutableConcreteJson.setIn(
-          ["callStack", stackLevel + 1, "blocks"],
-          codeToRun.getIn([index - 1, "code", "tape", "blocks"]));
+    // Actually add the blocks from the tape to the stack frame  
+    immutableConcreteJson = 
+      immutableConcreteJson.setIn(
+        ["callStack", stackLevel + 1, "blocks"],
+        codeToRun.getIn([index - 1, "code", "tape", "blocks"]));
 
-      // Actually add the lexical environment from the tape to the stack frame  
-      immutableConcreteJson = 
-        immutableConcreteJson.setIn(
-          ["callStack", stackLevel + 1, "environment"],
-          codeToRun.getIn([index - 1, "code", "tape", "environment"]));
+    // Actually add the lexical environment from the tape to the stack frame  
+    immutableConcreteJson = 
+      immutableConcreteJson.setIn(
+        ["callStack", stackLevel + 1, "environment"],
+        codeToRun.getIn([index - 1, "code", "tape", "environment"]));
 
-      // Done stepping into new function call
-      // Flip the flag back
-      // Increment the step counter
-      immutableConcreteJson = immutableConcreteJson.set("midStep", false);
-      immutableConcreteJson = immutableConcreteJson.set("step", step + 1);
-      return immutableConcreteJson;
-    }
+    // Done stepping into new function call
+    // Flip the flag back
+    // Increment the step counter
+    immutableConcreteJson = immutableConcreteJson.set("midStep", false);
+    immutableConcreteJson = immutableConcreteJson.set("step", step + 1);
+    return immutableConcreteJson;
+  }
 
-    // Do return things
-    //    if stack level 0, set result, kill, and leave
-    //    if stack level > 0, 
-    //      place result as output
-    //      reduce stack level
-    //      move previous stack level index + 1
-    //      destroy code
-    // 
-    function returnPreviousToCarriageAndExitFrameAndEndStep(immutableConcreteJson)
+  // Do return things
+  //    if stack level 0, set result, kill, and leave
+  //    if stack level > 0, 
+  //      place result as output
+  //      reduce stack level
+  //      move previous stack level index + 1
+  //      destroy code
+  // 
+  function returnPreviousToCarriageAndExitFrameAndEndStep(immutableConcreteJson)
+  {
+
+    if (stackLevel === 0)
     {
+      // We're dead in the water!
+      immutableConcreteJson =
+        immutableConcreteJson.set(
+          "dead",
+          true);
 
-      if (stackLevel === 0)
-      {
-        // We're dead in the water!
-        immutableConcreteJson =
-          immutableConcreteJson.set(
-            "dead",
-            true);
-
-        // The result is the last thing, which might also be nothing
-        // because empty program or immediate return 
-        immutableConcreteJson =
-          immutableConcreteJson.set(
-            "result",
-            codeToRun.get(index - 1));
-      }
-      else
-      {
-        // Stack level is greater than 0, so do return
-        prevStackLevel = stackLevel - 1;
-        prevIndex = 
-          immutableConcreteJson.get("callStack")
-            .get(prevStackLevel)
-            .get("runner")
-            .get("index");
-
-        // Replace that block's current codez with resultant codez
-        immutableConcreteJson = 
-          immutableConcreteJson.setIn(
-            ["callStack", prevStackLevel, "blocks", prevIndex + 1, "code"],
-            codeToRun.get(index - 1).get("code"));
-
-        // Now that the output is placed, check if we're going for stack level 0
-        if (prevStackLevel === 0)
-        {
-          // We're headed for ZERO!! This means the above effect has
-          // changed the base layer blocks! Whoooop we matter in the universe!
-          // Update the base level blocks to match the change
-          immutableConcreteJson = 
-            immutableConcreteJson.set(
-              "blocks",
-              immutableConcreteJson.getIn(
-                ["callStack", prevStackLevel, "blocks"]));
-        }
-
-        // Advance the previous code by 1, representing the call being complete
-        immutableConcreteJson = 
-          immutableConcreteJson.setIn(
-            ["callStack", prevStackLevel, "runner", "index"],
-            prevIndex + 1);
-
-        // Reduce stack level
-        immutableConcreteJson = 
-          immutableConcreteJson.set("stackLevel", stackLevel - 1);
-
-        // Remove the current stack frame
-        immutableConcreteJson = 
-          immutableConcreteJson.deleteIn(["callStack", stackLevel]);
-        
-      }
-
-      // Done with step
-      // Flip the flag back
-      // Increment the step counter
-      immutableConcreteJson = immutableConcreteJson.set("midStep", false);
-      immutableConcreteJson = immutableConcreteJson.set("step", step + 1);
-      return immutableConcreteJson;
+      // The result is the thing immediately before runner, which might also
+      // be nothing because empty program or immediate return 
+      immutableConcreteJson =
+        immutableConcreteJson.set(
+          "result",
+          codeToRun.get(index - 1));
     }
+    else
+    {
+      // Stack level is greater than 0, so do return
+      prevStackLevel = stackLevel - 1;
+      prevIndex = 
+        immutableConcreteJson.get("callStack")
+          .get(prevStackLevel)
+          .get("runner")
+          .get("index");
+
+      // Replace that block's current codez with resultant codez
+      immutableConcreteJson = 
+        immutableConcreteJson.setIn(
+          ["callStack", prevStackLevel, "blocks", prevIndex + 1, "code"],
+          codeToRun.get(index - 1).get("code"));
+
+      // Now that the output is placed, check if we're going for stack level 0
+      if (prevStackLevel === 0)
+      {
+        // We're headed for ZERO!! This means the above effect has
+        // changed the base layer blocks! Whoooop we matter in the universe!
+        // Update the base level blocks to match the change
+        immutableConcreteJson = 
+          immutableConcreteJson.set(
+            "blocks",
+            immutableConcreteJson.getIn(
+              ["callStack", prevStackLevel, "blocks"]));
+      }
+
+      // Advance the previous code by 1, representing the call being complete
+      immutableConcreteJson = 
+        immutableConcreteJson.setIn(
+          ["callStack", prevStackLevel, "runner", "index"],
+          prevIndex + 1);
+
+      // Reduce stack level
+      immutableConcreteJson = 
+        immutableConcreteJson.set("stackLevel", stackLevel - 1);
+
+      // Remove the current stack frame
+      immutableConcreteJson = 
+        immutableConcreteJson.deleteIn(["callStack", stackLevel]);
+      
+    }
+
+    // Done with step
+    // Flip the flag back
+    // Increment the step counter
+    immutableConcreteJson = immutableConcreteJson.set("midStep", false);
+    immutableConcreteJson = immutableConcreteJson.set("step", step + 1);
+    return immutableConcreteJson;
+  }
 }
