@@ -405,7 +405,7 @@ function executeStepIn(concreteJson)
           throw new Error("Expected only numbers or strings to concatenate")
         }
       // Is it one of the numbers-only operators?
-      } else if(operator.match(/[-/*%<>|&]/))
+      } else if(operator.match(/[-/*%<>]/))
       {
         // Attempt to coerce inputs
         inputs = 
