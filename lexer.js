@@ -1,6 +1,7 @@
 var Immutable = require("immutable");
 var RESERVED_WORDS = ["return", "call", "_"];
-var envId = 0;
+var enumEnvironmentId = 0;
+var enumTapeId = 0;
 
 module.exports = 
 {
@@ -16,7 +17,7 @@ module.exports =
 // Any blocks which are name reference, value reference, addresses not in reg
 // or parent reg are syntactically undefined
 // 
-// Name of parents in environment is "0parentEnv" b/c leading 0 makes it invalid
+// Name of parents in environment is "parent" b/c leading 0 makes it invalid
 // identifier. Every other entry should be identifier
 // 
 // Then, during runtime, scan fold's lex for name, then lex's parent, etc.
@@ -30,14 +31,33 @@ function applyLexicalScope(immutableConcreteJson, parentEnv)
   var environment = Immutable.Map();
   var referencesToCheck = [];
   var newScopesToApply = [];
+  var currentTapeId;
 
-  // Always use a fresh ID
-  envId++;
+  // Always use a fresh ID, to make Enumerable
+  enumEnvironmentId++;
+
+  // Set the ID on this environment
+  environment = environment.set("id", enumEnvironmentId);
 
   // If supplied, put the parent in its place
   if (parentEnv)
   {
-    environment = environment.set("0parentEnv", parentEnv);
+    environment = environment.set("parent", parentEnv);
+  }
+
+  // Attempt to get the tape ID (is there any case when this works?)
+  if (immutableConcreteJson.get("id"))
+  {
+    console.warn("Didn't expect to actually find tape ID ever");
+    currentTapeId = immutableConcreteJson.get("id");
+  }
+  else
+  {
+    // Get the current tapeId and increment to make Enumerable
+    currentTapeId = enumTapeId++;
+
+    // Apply the tape ID to the tape itself for future reference (pun intended)
+    immutableConcreteJson = immutableConcreteJson.set("id", currentTapeId);
   }
   
   // Scan each block
@@ -49,15 +69,15 @@ function applyLexicalScope(immutableConcreteJson, parentEnv)
     // Register the name
     if (name)
     {
-      environment = environment.set(
-        name, 
+      environment = environment.setIn(
+        ["names", name], 
         Immutable.Map(
           {
-            // TODO: Supply all the information needed to access the current runtime value
-            // Still figuring out what info needs to go here...
+            // Supply all the information needed to access the runtime value
             index: i,
             name: name,
-            envId: envId
+            environmentId: enumEnvironmentId,
+            tapeId: currentTapeId
           }));
     }
 
@@ -129,6 +149,8 @@ function applyLexicalScope(immutableConcreteJson, parentEnv)
   // Lexical scopes to apply
   for (i = 0; i < newScopesToApply.length; i++)
   {
+    // Apply a lexical scope to this tape using the current environment as
+    // its parent
     immutableConcreteJson =
       immutableConcreteJson.setIn(
         ["blocks", newScopesToApply[i].blockIndex, "code", "tape"],
@@ -145,14 +167,14 @@ function applyLexicalScope(immutableConcreteJson, parentEnv)
 
   function checkReference(name, environment)
   {
-    if (environment.get(name))
+    if (environment.getIn(["names", name]))
     {
       return true;
     }
 
-    if (environment.get("0parentEnv"))
+    if (environment.get("parent"))
     {
-      return checkReference(name, environment.get("0parentEnv"));
+      return checkReference(name, environment.get("parent"));
     }
 
     throw new Error("Name " + name + " never declared");
