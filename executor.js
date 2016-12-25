@@ -4,6 +4,7 @@ var lexer = require("./lexer.js");
 var MAX_STEPS = 1000;
 var MAX_CALL_STACK_SIZE = 500;
 var RESERVED_WORDS = ["return", "call", "_"];
+var enumFrameId = 0;
 
 module.exports = 
 {
@@ -98,6 +99,7 @@ function executeStepIn(concreteJson)
           Immutable.fromJS(
             [
               {
+                frameId: enumFrameId++,
                 blocks: {},
                 runner: 
                 {
@@ -129,10 +131,10 @@ function executeStepIn(concreteJson)
 
     // This is name definition time, so each name has to go in
     // a closure registry 
-    // Add the closuresByEnvId map 
+    // Add the referencesByStackFrameId map 
     immutableConcreteJson = 
       immutableConcreteJson.setIn(
-        ["callStack", stackLevel, "closuresByEnvId"],
+        ["callStack", stackLevel, "referencesByStackFrameId"],
         Immutable.Map());
   }
 
@@ -187,6 +189,7 @@ function executeStepIn(concreteJson)
             ["callStack", stackLevel],
             Immutable.fromJS(
             {
+              frameId: enumFrameId++,
               blocks: {},
               environment: {},
               runner:
@@ -362,23 +365,23 @@ function executeStepIn(concreteJson)
                   //
                   function getValueFromReference(name, environment)
                   {
-                    var envForName = environment.get(name);
+                    var envForName = environment.getIn(["names", name]);
 
                     if (! envForName)
                     {
 
-                      if (environment.get("0parentEnv"))
+                      if (environment.get("parent"))
                       {
                         return getValueFromReference(
                           name,
-                          environment.get("0parentEnv"));
+                          environment.get("parent"));
                       }
 
                       throw new Error("Name " + name + " never declared");
                     }
 
                     return immutableConcreteJson.getIn(
-                      ["closuresByEnvId", envForName.get("envId"), name]);
+                      ["referencesByStackFrameId", envForName.get("envId"), name]);
 
                   }
                 }
