@@ -137,85 +137,87 @@ function executeStepIn(concreteJson)
     // This is name definition time, so each name has to go in
     // a closure registry 
     // Add the referencesByStackFrameId map 
-    immutableConcreteJson = 
-      immutableConcreteJson.setIn(
-        ["callStack", stackLevel, "referencesByStackFrameId"],
-        Immutable.Map());
+    // TODO: Implement closures
+    // immutableConcreteJson = 
+    //   immutableConcreteJson.setIn(
+    //     ["callStack", stackLevel, "referencesByStackFrameId"],
+    //     Immutable.Map());
 
     // Get the appropriate code from the run stack
     codeToCheckForNames =
       immutableConcreteJson
         .getIn(["callStack", stackLevel, "blocks"]);
 
+    // TODO: Implement closures
     // Build an entry in the referenceTable for it
-    referenceTableSlot =
-        immutableConcreteJson
-          .getIn(
-            ["callStack", stackLevel,
-              "referencesByStackFrameId", currentFrameId]);
+    // referenceTableSlot =
+    //     immutableConcreteJson
+    //       .getIn(
+    //         ["callStack", stackLevel,
+    //           "referencesByStackFrameId", currentFrameId]);
 
-    // There was no slot yet for this frameId
-    if (! referenceTableSlot)
-    {
-      // So create one
-      referenceTableSlot = 
-        Immutable.fromJS(
-          {
-            frameId: immutableConcreteJson
-                      .getIn(["callStack", stackLevel, "frameId"]),
-            references: {}
-          });
-    }
+    // // There was no slot yet for this frameId
+    // if (! referenceTableSlot)
+    // {
+    //   // So create one
+    //   referenceTableSlot = 
+    //     Immutable.fromJS(
+    //       {
+    //         frameId: immutableConcreteJson
+    //                   .getIn(["callStack", stackLevel, "frameId"]),
+    //         references: {}
+    //       });
+    // }
 
-    // We now have all the information, so we can fill up the stack frame's vals
-    for (index = 0; index < codeToCheckForNames.size; index++)
-    {
-      blockToCheckForNames = codeToCheckForNames.get(index);
+    // // We now have all the information, so we can fill up the stack frame's vals
+    // for (index = 0; index < codeToCheckForNames.size; index++)
+    // {
+    //   blockToCheckForNames = codeToCheckForNames.get(index);
 
-      if (! blockToCheckForNames)
-      {
-        throw new Error("Reference checking failed to select a block");
-      }
+    //   if (! blockToCheckForNames)
+    //   {
+    //     throw new Error("Reference checking failed to select a block");
+    //   }
 
-      // If this block doesn't have a name,
-      if (! blockToCheckForNames.get("name"))
-      {
-        // Leave it
-        continue;
-      }
+    //   // If this block doesn't have a name,
+    //   if (! blockToCheckForNames.get("name"))
+    //   {
+    //     // Leave it
+    //     continue;
+    //   }
 
-      // This block has a name, so continue checking it out
+    //   // This block has a name, so continue checking it out
 
-      // If this name already has a value in this stack frame...
-      if (referenceTableSlot.getIn(
-            ["references", blockToCheckForNames.get("name")]))
-      {
-        console.warn(
-          "Warning: "
-          + "Name "
-          + blockToCheckForNames.get("name")
-          + " already defined in this frame");
-      }
+    //   // If this name already has a value in this stack frame...
+    //   if (referenceTableSlot.getIn(
+    //         ["references", blockToCheckForNames.get("name")]))
+    //   {
+    //     console.warn(
+    //       "Warning: "
+    //       + "Name "
+    //       + blockToCheckForNames.get("name")
+    //       + " already defined in this frame");
+    //   }
 
-      // Add its value to the table, or change it if existant
-      referenceTableSlot = 
-        referenceTableSlot.setIn(
-          ["references", blockToCheckForNames.get("name")],
-          Immutable.fromJS(
-            {
-              name: blockToCheckForNames.get("name"),
-              value: blockToCheckForNames
-            })
-          );
-    }
+    //   // Add its value to the table, or change it if existant
+    //   referenceTableSlot = 
+    //     referenceTableSlot.setIn(
+    //       ["references", blockToCheckForNames.get("name")],
+    //       Immutable.fromJS(
+    //         {
+    //           name: blockToCheckForNames.get("name"),
+    //           value: blockToCheckForNames
+    //         })
+    //       );
+    // }
 
-    // Done adding to this frame's references, add the slot back into the table
-    immutableConcreteJson =
-      immutableConcreteJson
-        .setIn(
-          ["callStack", stackLevel, 
-            "referencesByStackFrameId", currentFrameId],
-          referenceTableSlot);
+    // // Done adding to this frame's references, add the slot back into the table
+    // immutableConcreteJson =
+    //   immutableConcreteJson
+    //     .setIn(
+    //       ["callStack", stackLevel, 
+    //         "referencesByStackFrameId", currentFrameId],
+    //       referenceTableSlot);
   }
 
   // Get the appropriate code from the run stack
