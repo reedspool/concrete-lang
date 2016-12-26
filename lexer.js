@@ -118,8 +118,8 @@ function applyLexicalScope(immutableConcreteJson, parentEnv)
       break;
 
     case "falsey" :
-      // TODO: Implement
-      throw new Error("Falsey lexical scope not implemented");
+      // TODO: Implement or throw error, currently letting it pass thru
+      // throw new Error("Falsey lexical scope not implemented");
       // Not sure about this because Falsey inner value may be a fold or it may be a reference itself. 
       // referencesToCheck.push(
       //   immutableConcreteJson.getIn(["blocks", i, "code", "value"]),
