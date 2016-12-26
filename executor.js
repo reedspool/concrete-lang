@@ -50,7 +50,10 @@ function executeStepIn(concreteJson)
   var prevStackLevel;
   var prevIndex;
   var callStack;
-  var environment;
+  var referenceTableSlot;
+  var currentFrameId;
+  var codeToCheckForNames;
+  var blockToCheckForNames;
 
   // Coerce to Immutable
   if (concreteJson instanceof Immutable.Map)
@@ -71,7 +74,6 @@ function executeStepIn(concreteJson)
   {
     step = 0;
     immutableConcreteJson = immutableConcreteJson.set("step", step);
-
   }
 
   if (step >= MAX_STEPS)
@@ -88,6 +90,9 @@ function executeStepIn(concreteJson)
     // Set it to initial
     stackLevel = 0;
 
+    // Make a new ID for this new frame, ane keep Enumerable
+    currentFrameId = enumFrameId++;
+
     // And in the representation
     immutableConcreteJson = immutableConcreteJson.set("stackLevel", stackLevel);
 
@@ -99,7 +104,7 @@ function executeStepIn(concreteJson)
           Immutable.fromJS(
             [
               {
-                frameId: enumFrameId++,
+                frameId: currentFrameId,
                 blocks: {},
                 runner: 
                 {
@@ -136,17 +141,87 @@ function executeStepIn(concreteJson)
       immutableConcreteJson.setIn(
         ["callStack", stackLevel, "referencesByStackFrameId"],
         Immutable.Map());
+
+    // Get the appropriate code from the run stack
+    codeToCheckForNames =
+      immutableConcreteJson
+        .getIn(["callStack", stackLevel, "blocks"]);
+
+    // Build an entry in the referenceTable for it
+    referenceTableSlot =
+        immutableConcreteJson
+          .getIn(
+            ["callStack", stackLevel,
+              "referencesByStackFrameId", currentFrameId]);
+
+    // There was no slot yet for this frameId
+    if (! referenceTableSlot)
+    {
+      // So create one
+      referenceTableSlot = 
+        Immutable.fromJS(
+          {
+            frameId: immutableConcreteJson
+                      .getIn(["callStack", stackLevel, "frameId"]),
+            references: {}
+          });
+    }
+
+    // We now have all the information, so we can fill up the stack frame's vals
+    for (index = 0; index < codeToCheckForNames.size; index++)
+    {
+      blockToCheckForNames = codeToCheckForNames.get(index);
+
+      if (! blockToCheckForNames)
+      {
+        throw new Error("Reference checking failed to select a block");
+      }
+
+      // If this block doesn't have a name,
+      if (! blockToCheckForNames.get("name"))
+      {
+        // Leave it
+        continue;
+      }
+
+      // This block has a name, so continue checking it out
+
+      // If this name already has a value in this stack frame...
+      if (referenceTableSlot.getIn(
+            ["references", blockToCheckForNames.get("name")]))
+      {
+        console.warn(
+          "Warning: "
+          + "Name "
+          + blockToCheckForNames.get("name")
+          + " already defined in this frame");
+      }
+
+      // Add its value to the table, or change it if existant
+      referenceTableSlot = 
+        referenceTableSlot.setIn(
+          ["references", blockToCheckForNames.get("name")],
+          Immutable.fromJS(
+            {
+              name: blockToCheckForNames.get("name"),
+              value: blockToCheckForNames
+            })
+          );
+    }
+
+    // Done adding to this frame's references, add the slot back into the table
+    immutableConcreteJson =
+      immutableConcreteJson
+        .setIn(
+          ["callStack", stackLevel, 
+            "referencesByStackFrameId", currentFrameId],
+          referenceTableSlot);
   }
 
   // Get the appropriate code from the run stack
   codeToRun =
     immutableConcreteJson
       .getIn(["callStack", stackLevel, "blocks"]);
-
-  // Get the runtime environment for that code
-  environment =
-    immutableConcreteJson
-      .getIn(["callStack", stackLevel, "environment"]);
 
   // Discover which block the runner will run
   index =
@@ -222,10 +297,12 @@ function executeStepIn(concreteJson)
       return immutableConcreteJson;
       break;
     default :
-      // It's an identifier, do identifier things
+      // TODO: It's an identifier, do identifier things
       // Check this scope
         // If not there, check parent scopes
         // When you find the code to run, do the call things
+      throw new Error("Calling identifiers not yet implemented");
+      break;
     }
   }
   else
@@ -258,6 +335,46 @@ function executeStepIn(concreteJson)
           throw new Error("Not enough inputs for operation");
         }
 
+        // Dereference reference values
+
+        // Is it a simple block?
+        if (typeof nextInput.get("code") === "string")
+        {
+          // Is this is one of the reserved words?
+          if (-1 != RESERVED_WORDS.indexOf(
+              nextInput.get("code")))
+          {
+            throw new Error(
+              "Reserved word " + 
+              nextInput.get("code") +
+              " used as input for " + operator);
+          }
+
+          // TODO: Implement call references
+          // Offer a hint
+          throw new Error(
+            "Identifier " + 
+            nextInput.get("code") +
+            " used as input for " + operator +
+            ((Math.random() < 0.5)
+              ? ". Perhaps you meant the value reference, *"
+              : ". Perhaps you meant the address reference, @") +
+            nextInput.get("code") +
+            "?");
+        }
+        else
+        {
+          // It's a complex block so switch on the block's type
+          switch (nextInput.getIn(["code", "type"]))
+          {
+          // These cases are direct references, they should be represented in environment
+          case "valueReference" :
+            nextInput = dereferenceValueBlock(
+              nextInput.getIn(["code", "value"]));
+            break;
+          }
+        }
+
         // Front-load it, so left-most, top-most input is always first
         inputs.unshift(nextInput);
       }
@@ -274,6 +391,8 @@ function executeStepIn(concreteJson)
             .map(
               function (inputBlock)
               {
+                var value;
+
                 // Is it a simple block?
                 if (typeof inputBlock.get("code") === "string")
                 {
@@ -318,16 +437,10 @@ function executeStepIn(concreteJson)
                   case "falsey" :
                   case "fold" :
                   case "operator" :
+                  case "valueReference" :
                     throw new Error(
                       inputBlock.getIn(["code", "type"]) +
                       " used as input for " + operator);
-                    break;
-
-                  // These cases are direct references, they should be represented in environment
-                  case "valueReference" :
-                    value = getValueFromReference(
-                      inputBlock.getIn(["code", "value"]),
-                      environment);
                     break;
 
                   default :
@@ -350,40 +463,12 @@ function executeStepIn(concreteJson)
                   if (isNaN(parsed))
                   {
                     // Return undefined, not NaN;
-                    console.warn("Error parseFloat " + value);
+                    console.warn("Error parseFloat: ", value);
                     return;
                   }
 
                   // ALL GOOD, PROPER VALUE FOUND
                   return parsed;
-
-                  // TODO: IMPLEMENT THIS. Currently returns just the entry
-                  // Need to dig in to get the correct informationz
-                  // Currently stuck on how to resolve parsers
-                  // TODO: Once implemented, extend this capability to other operators
-                  //       and reserved words and implement inputs for calls
-                  //
-                  function getValueFromReference(name, environment)
-                  {
-                    var envForName = environment.getIn(["names", name]);
-
-                    if (! envForName)
-                    {
-
-                      if (environment.get("parent"))
-                      {
-                        return getValueFromReference(
-                          name,
-                          environment.get("parent"));
-                      }
-
-                      throw new Error("Name " + name + " never declared");
-                    }
-
-                    return immutableConcreteJson.getIn(
-                      ["referencesByStackFrameId", envForName.get("envId"), name]);
-
-                  }
                 }
               });
 
@@ -584,97 +669,6 @@ function executeStepIn(concreteJson)
   // Finally, give back the new version
   return immutableConcreteJson;
 
-  // Do call things
-  //   increase stack level by 1
-  //   use inputs from left for inputs to code
-  function doAllTheCallThings(immutableConcreteJson)
-  {
-    // Set it to initial
-    stackLevel = 0;
-
-    // And in the representation
-    immutableConcreteJson = immutableConcreteJson.set("stackLevel", stackLevel);
-
-    // Create the call stack with one level
-    immutableConcreteJson =
-      immutableConcreteJson
-        .set(
-          "callStack",
-          Immutable.fromJS(
-            [
-              {
-                blocks: {},
-                environment: {},
-                runner: 
-                {
-                  index: 0,
-                  stackLevel: stackLevel
-                }
-
-              }
-            ]
-          ));
-
-    // Perform lexical analysis before using the blocks for the first time
-    immutableConcreteJson = 
-      lexer.applyLexicalScope(
-        immutableConcreteJson,
-        Immutable.Map()); // TODO: Use this environment Map to link in plugins!!
-
-    // Set the initial code in the stack
-    immutableConcreteJson =
-      immutableConcreteJson.setIn(
-        ["callStack", stackLevel, "blocks"],
-        immutableConcreteJson.get("blocks"));
-
-    // Add the lexical environment from the base tape to the stack frame  
-    immutableConcreteJson = 
-      immutableConcreteJson.setIn(
-        ["callStack", stackLevel, "environment"],
-        immutableConcreteJson.get("environment"));
-
-    immutableConcreteJson =
-      immutableConcreteJson
-        .setIn(
-          ["callStack", stackLevel + 1],
-          Immutable.fromJS(
-          {
-            blocks: {},
-            environment: {},
-            runner:
-            {
-              index: 0,
-              stackLevel: stackLevel + 1
-            }
-          }));
-
-    immutableConcreteJson =
-      immutableConcreteJson.set("callStack", callStack);
-
-    immutableConcreteJson =
-      immutableConcreteJson.set("stackLevel", stackLevel + 1);
-
-
-    // Actually add the blocks from the tape to the stack frame  
-    immutableConcreteJson = 
-      immutableConcreteJson.setIn(
-        ["callStack", stackLevel + 1, "blocks"],
-        codeToRun.getIn([index - 1, "code", "tape", "blocks"]));
-
-    // Actually add the lexical environment from the tape to the stack frame  
-    immutableConcreteJson = 
-      immutableConcreteJson.setIn(
-        ["callStack", stackLevel + 1, "environment"],
-        codeToRun.getIn([index - 1, "code", "tape", "environment"]));
-
-    // Done stepping into new function call
-    // Flip the flag back
-    // Increment the step counter
-    immutableConcreteJson = immutableConcreteJson.set("midStep", false);
-    immutableConcreteJson = immutableConcreteJson.set("step", step + 1);
-    return immutableConcreteJson;
-  }
-
   // Do return things
   //    if stack level 0, set result, kill, and leave
   //    if stack level > 0, 
@@ -685,7 +679,6 @@ function executeStepIn(concreteJson)
   // 
   function returnPreviousToCarriageAndExitFrameAndEndStep(immutableConcreteJson)
   {
-
     if (stackLevel === 0)
     {
       // We're dead in the water!
@@ -752,5 +745,80 @@ function executeStepIn(concreteJson)
     immutableConcreteJson = immutableConcreteJson.set("midStep", false);
     immutableConcreteJson = immutableConcreteJson.set("step", step + 1);
     return immutableConcreteJson;
+  }
+
+
+  // TODO: IMPLEMENT THIS. Currently returns just the entry
+  // Need to dig in to get the correct informationz
+  // Currently stuck on how to resolve parsers
+  // TODO: Once implemented, extend this capability to other operators
+  //       and reserved words and implement inputs for calls
+  //
+  function dereferenceValueBlock(name)
+  {
+    var checkStackLevel = stackLevel;
+    var envForName;
+    
+    // TODO: Implement closures
+    // var currentFrameId =
+    //   immutableConcreteJson
+    //     .getIn(["callStack", stackLevel, "frameId"]);
+
+    for (; checkStackLevel >= 0; checkStackLevel--)
+    {
+      envForName = immutableConcreteJson.getIn(
+          ["callStack", checkStackLevel, 
+            "environment", "names", name]);
+
+      // Did we catch something?
+      if (envForName)
+      {
+        // We found the correct stack level, so find the actual
+        // entry in that call stack and return that
+        return immutableConcreteJson.getIn(
+          ["callStack", checkStackLevel, 
+            "blocks", envForName.get("index")]);
+      }
+    }
+
+    // We've walked the entire tree,
+    throw new Error("Name " + name + " never declared");
+
+    // TODO: Implement closures
+    // if (! envForName)
+    // {
+
+    //   if (environment.get("parent"))
+    //   {
+    //     return dereferenceValueBlock(
+    //       name,
+    //       environment.get("parent"));
+    //   }
+
+    // }
+debugger;
+    // TODO: Implement closures
+    // Is there a location for it in the references table?
+    // if (! (
+    //     immutableConcreteJson.getIn(
+    //       ["callStack", stackLevel, 
+    //         "referencesByStackFrameId", currentFrameId]) &&
+    //     immutableConcreteJson.getIn(
+    //       ["callStack", stackLevel, 
+    //         "referencesByStackFrameId", currentFrameId,
+    //         "references", name])))
+    // {
+    //   // There should be a slot for this but there's not, so err
+    //   // When implemented, this shouldn't ever happen
+    //     // Is there a case where this happens? Does lexer catch it?
+    //   throw new Error(
+    //     "Name " + name + " never defined in this frame");
+    // }
+
+    // TODO: Implement closures
+    // return immutableConcreteJson.getIn(
+    //   ["callStack", stackLevel, 
+    //     "referencesByStackFrameId", currentFrameId, 
+    //     "references", name]);
   }
 }

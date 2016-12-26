@@ -2,7 +2,8 @@ var parser = require("./parser.js");
 var executor = require("./executor.js");
 var console_printing = require("./console_printing.js");
 var readline = require('readline');
-
+var MS_SLEEP = 0;
+debugger;
 module.exports = 
 {
   executeString : executeString,
@@ -31,7 +32,6 @@ function prettyExecuteEveryStep(text, writeLine)
   var immutableConcreteJson = parser.parse(text);
   var stackSize;
   var stackFramePrettied;
-  var MS_SLEEP = 1000;
   var i;
   var j;
   var pre_runner;
