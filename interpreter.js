@@ -2,7 +2,7 @@ var parser = require("./parser.js");
 var executor = require("./executor.js");
 var console_printing = require("./console_printing.js");
 var readline = require('readline');
-var MS_SLEEP = 0;
+var MS_SLEEP = 750;
 debugger;
 module.exports = 
 {
@@ -104,6 +104,7 @@ function prettyExecuteEveryStep(text, writeLine)
       writeLine(" " +
         console_printing.prettyTapeWithNames(
           immutableConcreteJson.getIn(["callStack", i])));
+      
       index = immutableConcreteJson.getIn(
         ["callStack", i, "runner", "index"]);
 
