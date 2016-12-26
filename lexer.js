@@ -93,7 +93,9 @@ function applyLexicalScope(immutableConcreteJson, parentEnv)
       }
 
       // No, so it must be a previously defined word or error
-      referencesToCheck.push(immutableConcreteJson.getIn(["blocks", i, "code"]));
+      // TODO: Remove when call by reference is implemented
+      throw new Error("Call by reference not implemented");
+      // referencesToCheck.push(immutableConcreteJson.getIn(["blocks", i, "code"]));
       continue;
     }
 
