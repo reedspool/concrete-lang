@@ -513,27 +513,31 @@ function executeStepIn(concreteJson)
           break;
         };
       }
-      else if (operator === "|" || operator === "&")
+      // Is it a boolean OR test?
+      else if (operator === "|")
       { 
-        // Attempt to coerce inputs to booleans
-        inputsAreFalsey = 
-          inputs.map(
-            function (input)
-            {
-              // It's only false if it's falsey! (tm)
-              return  input.get("code").get("type") === "falsey"
-                ? false
-                : true ;
-            });
-
-        // Act like a short circuit operator
-        // Return the first thing that satisfies the truth statement
-        result =
-          operator == "|"
-          ? (inputsAreFalsey[0] && inputs[0]) || 
-            (inputsAreFalsey[1] && inputs[1])
-          : (inputsAreFalsey[0] && inputs[0]) && 
-            (inputsAreFalsey[1] && inputs[1])
+        // Short circuit operators
+        if (inputs[0].get("code").get("type") === "falsey")
+        {
+          parsedResult = inputs[1];
+        }
+        else
+        {
+          parsedResult = inputs[0];
+        }
+      }
+      // Is it a boolean AND test?
+      else if (operator === "&")
+      { 
+        // Short circuit operators
+        if (inputs[0].get("code").get("type") === "falsey")
+        {
+          parsedResult = inputs[0];
+        }
+        else
+        {
+          parsedResult = inputs[1];
+        }
       }
       else if (operator === "?")
       { 
@@ -601,7 +605,7 @@ function executeStepIn(concreteJson)
         // Well, result not being set yet is an error
         if (! result && result !== 0)
         {
-          throw new Error("Unhandled operator 456456234");
+          throw new Error("Unhandled operator " + operator);
         }
 
         // Use the original parser to turn JavaScript result into concrete result
