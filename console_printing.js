@@ -3,6 +3,8 @@ var Immutable = require("immutable");
 module.exports = 
 {
   prettyOutputResult : prettyOutputResult,
+  prettyTapeWithNames : prettyTapeWithNames,
+  prettyBlockWithNames : prettyBlockWithNames,
   prettyTapeSansNames : prettyTapeSansNames,
   prettyBlockSansNames : prettyBlockSansNames
 };
@@ -11,9 +13,18 @@ var DELIM_LEFT_RUNNER = " ";
 var DELIM_RIGHT_RUNNER = " ";
 var DELIM_BLOCK = " ";
 
-function prettyOutputResult(concreteJson)
+function prettyOutputResult(concreteJson, options)
 {
   var immutableConcreteJson;
+
+  if (! options)
+  {
+    // Use default options
+    options = 
+    {
+      names: true
+    }
+  }
 
   // Coerce to Immutable
   if (concreteJson instanceof Immutable.Map)
@@ -38,10 +49,31 @@ function prettyOutputResult(concreteJson)
     throw new Error("Executor Internal Error: Result not computed");
   }
 
-  return prettyBlockSansNames(result);
+  return prettyBlock(result, options);
+}
+
+function prettyTapeWithNames(concreteJson)
+{
+  return prettyTape(concreteJson, { names: true });
+}
+
+function prettyBlockWithNames(concreteJson)
+{
+  return prettyBlock(concreteJson, { names: true });
 }
 
 function prettyTapeSansNames(concreteJson)
+{
+  return prettyTape(concreteJson, { names: false });
+}
+
+function prettyBlockSansNames(concreteJson)
+{
+  return prettyBlock(concreteJson, { names: false });
+}
+
+
+function prettyTape(concreteJson, options)
 {
   var immutableConcreteJson;
   var jsonBlockArray;
@@ -63,7 +95,11 @@ function prettyTapeSansNames(concreteJson)
 
   jsonBlockArray = immutableConcreteJson
     .get("blocks")
-    .map(prettyBlockSansNames)
+    .map(
+      function (block) 
+      {
+        return prettyBlock(block, options);
+      })
     .toJS();
 
   // If we can't find the runner's current location,
@@ -117,9 +153,11 @@ function prettyTapeSansNames(concreteJson)
   return str;
 }
 
-function prettyBlockSansNames(concreteJson)
+function prettyBlock(concreteJson, options)
 {
   var immutableConcreteJson;
+  var prefix = "";
+  var blockStr = "";
 
   // Coerce to Immutable
   if (concreteJson instanceof Immutable.Map)
@@ -129,6 +167,12 @@ function prettyBlockSansNames(concreteJson)
   else
   {
     immutableConcreteJson = Immutable.fromJS(concreteJson); 
+  }
+
+  // If this block has a name
+  if (options.names && immutableConcreteJson.get("name"))
+  {
+    prefix = immutableConcreteJson.get("name") + ":";
   }
 
   // Is it a simple block?
@@ -143,31 +187,36 @@ function prettyBlockSansNames(concreteJson)
   {
   // Values -- noops
   case "fold" :
-    return "[ " +
-      prettyTapeSansNames(
-        immutableConcreteJson.get("code").get("tape")) +
+    blockStr = "[ " +
+      prettyTape(
+        immutableConcreteJson.get("code").get("tape"), options) +
       " ]";
     break;
   case "number" :
-    return immutableConcreteJson.get("code").get("value");
+    blockStr = immutableConcreteJson.get("code").get("value");
     break;
   case "string" :
-    return "\"" + immutableConcreteJson.get("code").get("value") + "\"";
+    blockStr = "\"" + immutableConcreteJson.get("code").get("value") + "\"";
     break;
   case "address" :
-    return "@" + immutableConcreteJson.get("code").get("value");
+    blockStr = "@" + immutableConcreteJson.get("code").get("value");
     break;
   case "valueReference" :
-    return "*" + immutableConcreteJson.get("code").get("value");
+    blockStr = "*" + immutableConcreteJson.get("code").get("value");
     break;
   case "falsey" :
-    return "!" + prettyBlockSansNames(immutableConcreteJson.get("code").get("value"));
+    blockStr = "!" + 
+      prettyBlock(
+        immutableConcreteJson.get("code").get("value"), options);
     break;
   case "operator" :
-    return immutableConcreteJson.get("code").get("op");
+    blockStr = immutableConcreteJson.get("code").get("op");
+    break;
+  default:
+    // Shouldn't get here
+    throw new Error("Unable to prettify ", immutableConcreteJson);
     break;
   }
 
-  // Shouldn't get here
-  throw new Error("Unable to prettify ", immutableConcreteJson);
+  return prefix + blockStr;
 }

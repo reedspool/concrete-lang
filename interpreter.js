@@ -23,7 +23,7 @@ function executeString(text)
 
 function prettyExecuteString(text)
 {
-  return console_printing.prettyTapeSansNames(
+  return console_printing.prettyTapeWithNames(
     executeString(text));
 }
 
@@ -49,7 +49,7 @@ function prettyExecuteEveryStep(text, writeLine)
       {
         writeLine();
         writeLine(
-          "Result: " + console_printing.prettyBlockSansNames(
+          "Result: " + console_printing.prettyBlockWithNames(
             immutableConcreteJson.get("result")));
         
         process.exit(0);
@@ -61,7 +61,7 @@ function prettyExecuteEveryStep(text, writeLine)
 
       immutableConcreteJson = executor.executeStepIn(immutableConcreteJson);
       stackSize = immutableConcreteJson.get("stackLevel") + 1;
-      // writeLine(console_printing.prettyTapeSansNames(immutableConcreteJson));
+      // writeLine(console_printing.prettyTapeWithNames(immutableConcreteJson));
       
       writeLine();
       writeLine("Step " + immutableConcreteJson.get("step"));
@@ -74,7 +74,7 @@ function prettyExecuteEveryStep(text, writeLine)
       for (i = 0; i < stackSize - 1; i++)
       {
         stackFramePrettied = 
-          console_printing.prettyTapeSansNames(
+          console_printing.prettyTapeWithNames(
             immutableConcreteJson.getIn(["callStack", i]));
 
         if (stackFramePrettied.length > 50)
@@ -102,7 +102,7 @@ function prettyExecuteEveryStep(text, writeLine)
       writeLine();
 
       writeLine(" " +
-        console_printing.prettyTapeSansNames(
+        console_printing.prettyTapeWithNames(
           immutableConcreteJson.getIn(["callStack", i])));
       index = immutableConcreteJson.getIn(
         ["callStack", i, "runner", "index"]);
@@ -112,13 +112,13 @@ function prettyExecuteEveryStep(text, writeLine)
       for (j = 0; j < index; j++)
       {
         pre_runner += 
-          ("" + console_printing.prettyBlockSansNames(
+          ("" + console_printing.prettyBlockWithNames(
             immutableConcreteJson.getIn(["callStack", i, "blocks", j - 1])))
             .replace(/./g, " ") + " ";
       }
 
       runnerAscii = 
-        ("" + console_printing.prettyBlockSansNames(
+        ("" + console_printing.prettyBlockWithNames(
           immutableConcreteJson.getIn(["callStack", i, "blocks", index - 1])))
           .replace(/./g, "*");
 
@@ -159,14 +159,14 @@ function main()
     {
       // Print final line
       // process.stdout.write(
-      //  console_printing.prettyTapeSansNames(
+      //  console_printing.prettyTapeWithNames(
       //    executeString(file)) +
       //  "\n");
 
       // Print only result
       // process.stdout.write(
       //   "Result: " + 
-      //   console_printing.prettyBlockSansNames(
+      //   console_printing.prettyBlockWithNames(
       //     executeString(file).get("result")) +
       //   "\n");
 
