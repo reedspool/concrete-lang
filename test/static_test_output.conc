@@ -44,3 +44,8 @@ _
 23 [ 23 23 * _ ] call 529
 23 [ [ [ [ [ [ [ 4 ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call 4
 23 [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ [ 4 ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call 4
+
+
+b:2 *b 2 + 4
+c:2 [ [ *c 2 + _ ] call _ ] call 4 2 + 6
+e:1 [ d:2 *d *e + _ ] call 3
