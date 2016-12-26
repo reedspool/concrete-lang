@@ -276,6 +276,7 @@ function executeStepIn(concreteJson)
               }
             }));
 
+      // Set the global stack level
       immutableConcreteJson =
         immutableConcreteJson.set("stackLevel", stackLevel);
 
@@ -381,7 +382,7 @@ function executeStepIn(concreteJson)
         inputs.unshift(nextInput);
       }
 
-      // Singular case
+      // Are we adding/concatenating?
       if(operator === "+")
       {
         // "+" operator is Plus or Concatenate
@@ -395,83 +396,56 @@ function executeStepIn(concreteJson)
               {
                 var value;
 
-                // Is it a simple block?
-                if (typeof inputBlock.get("code") === "string")
+                // It's a complex block so switch on the block's type
+                switch (inputBlock.getIn(["code", "type"]))
                 {
-                  // Is this is one of the reserved words?
-                  if (-1 != RESERVED_WORDS.indexOf(
-                      inputBlock.get("code")))
-                  {
-                    throw new Error(
-                      "Reserved word " + 
-                      inputBlock.get("code") +
-                      " used as input for " + operator);
-                  }
+                // Values which do not increase scope or reference scope
+                case "number" :
+                  // These are cool
+                  value = inputBlock.getIn(["code", "value"]);
+                  break;
+                case "string" :
+                  // These are cool
+                  return inputBlock.getIn(["code", "value"]);
+                  break;
 
-                  // Offer a hint
+                // Invalid ops
+                case "address" :
+                case "falsey" :
+                case "fold" :
+                case "operator" :
+                case "valueReference" :
                   throw new Error(
-                    "Identifier " + 
-                    inputBlock.get("code") +
-                    " used as input for " + operator +
-                    ((Math.random() < 0.5)
-                      ? ". Perhaps you meant the value reference, *"
-                      : ". Perhaps you meant the address reference, @") +
-                    inputBlock.get("code") +
-                    "?");
+                    inputBlock.getIn(["code", "type"]) +
+                    " used as input for " + operator);
+                  break;
+
+                default :
+                  // Unrecognized block!
+                  throw new Error(
+                    "Unrecognized block of type " +
+                    blockToRun.get("code").get("type"));
                 }
-                else
+
+                // If something went wrong...
+                if (! value && value !== 0)
                 {
-                  // It's a complex block so switch on the block's type
-                  switch (inputBlock.getIn(["code", "type"]))
-                  {
-                  // Values which do not increase scope or reference scope
-                  case "number" :
-                    // These are cool
-                    value = inputBlock.getIn(["code", "value"]);
-                    break;
-                  case "string" :
-                    // These are cool
-                    return inputBlock.getIn(["code", "value"]);
-                    break;
-
-                  // Invalid ops
-                  case "address" :
-                  case "falsey" :
-                  case "fold" :
-                  case "operator" :
-                  case "valueReference" :
-                    throw new Error(
-                      inputBlock.getIn(["code", "type"]) +
-                      " used as input for " + operator);
-                    break;
-
-                  default :
-                    // Unrecognized block!
-                    throw new Error(
-                      "Unrecognized block of type " +
-                      blockToRun.get("code").get("type"));
-                  }
-
-                  // If something went wrong...
-                  if (! value && value !== 0)
-                  {
-                    // Return undefined, instead of whatever it is
-                    return;
-                  }
-
-                  var parsed = parseFloat(value, 10)
-
-                  // If the parsing was bungled...
-                  if (isNaN(parsed))
-                  {
-                    // Return undefined, not NaN;
-                    console.warn("Error parseFloat: ", value);
-                    return;
-                  }
-
-                  // ALL GOOD, PROPER VALUE FOUND
-                  return parsed;
+                  // Return undefined, instead of whatever it is
+                  return;
                 }
+
+                var parsed = parseFloat(value, 10)
+
+                // If the parsing was bungled...
+                if (isNaN(parsed))
+                {
+                  // Return undefined, not NaN;
+                  console.warn("Error parseFloat: ", value);
+                  return;
+                }
+
+                // ALL GOOD, PROPER VALUE FOUND
+                return parsed;
               });
 
         // If String and number, coerce to string and concatenate
@@ -494,8 +468,8 @@ function executeStepIn(concreteJson)
         {
           throw new Error("Expected only numbers or strings to concatenate")
         }
-      // Is it one of the numbers-only operators?
       }
+      // Is it one of the numbers-only operators?
       else if(operator.match(/[-/*%<>]/))
       {
         // Attempt to coerce inputs
@@ -799,7 +773,7 @@ function executeStepIn(concreteJson)
     //   }
 
     // }
-debugger;
+
     // TODO: Implement closures
     // Is there a location for it in the references table?
     // if (! (
