@@ -73,12 +73,14 @@
     / Falsey
     / Address
     / ValueReference
+    / ApplyReference
 
   Fold
-    = "[" tape:Tape "]" {
+    = args:("(" __ Tape __ ")")? "[" tape:Tape "]" {
       return {
         type: "fold",
-        tape: tape
+        tape: tape,
+        args: extractOptional(args, 2)
       }
     }
 
@@ -173,6 +175,14 @@
     = "*" value:Identifier {
       return {
         type: "valueReference",
+        value: value
+      }
+    }
+    
+  ApplyReference
+    = "^" value:Identifier {
+      return {
+        type: "applyReference",
         value: value
       }
     }
