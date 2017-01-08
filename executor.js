@@ -54,6 +54,11 @@ function executeStepIn(concreteJson)
   var currentFrameId;
   var codeToCheckForNames;
   var blockToCheckForNames;
+  var inputs;
+  var result;
+  var operator;
+  var inputIndex;
+  var nextInput;
 
   // Coerce to Immutable
   if (concreteJson instanceof Immutable.Map)
@@ -254,12 +259,19 @@ function executeStepIn(concreteJson)
       return returnPreviousToCarriageAndExitFrameAndEndStep(immutableConcreteJson);
       break;
 
+    case "apply":
     case "call" :
       // Do call things
       //   increase stack level by 1
-      //   use inputs from left for inputs to code
+      //   If applying, singular input must be of type fold
+      //       look for formal args and declare and define them
+      //   If calling, singular input can be any value
+      //       look for formal args and declare and define them all, redefine first formal arg to the input val
       stackLevel = stackLevel + 1;
 
+      nextInput = codeToRun.get(index - 1);
+
+      // Create a new stack frame
       immutableConcreteJson =
         immutableConcreteJson
           .setIn(
@@ -324,14 +336,14 @@ function executeStepIn(concreteJson)
       break;
     // A thing to do!
     case "operator" :
-      var inputs = [];
-      var result;
-      var operator = blockToRun.get("code").get("op")
+      inputs = [];
+      result;
+      operator = blockToRun.get("code").get("op")
 
       // Walk backwards from input count
-      for (var i = 1; i <= blockToRun.get("code").get("countInputs"); i++)
+      for (inputIndex = 1; inputIndex <= blockToRun.get("code").get("countInputs"); inputIndex++)
       {
-        var nextInput = codeToRun.get(index - i);
+        nextInput = codeToRun.get(index - inputIndex);
 
         if (! nextInput)
         {
@@ -374,6 +386,9 @@ function executeStepIn(concreteJson)
           case "valueReference" :
             nextInput = dereferenceValueBlock(
               nextInput.getIn(["code", "value"]));
+            break;
+          default :
+            // Do nothing, it's just a normal value.
             break;
           }
         }
