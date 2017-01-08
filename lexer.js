@@ -26,7 +26,8 @@ module.exports =
 // Throws Error on bad name useage
 function applyLexicalScope(immutableConcreteJson, parentEnv)
 {
-  var i;
+  var index;
+  var index2;
   var name;
   var environment = Immutable.Map();
   var referencesToCheck = [];
@@ -61,10 +62,10 @@ function applyLexicalScope(immutableConcreteJson, parentEnv)
   }
   
   // Scan each block
-  for (i = 0; i < immutableConcreteJson.getIn(["blocks"]).size; i++)
+  for (index = 0; index < immutableConcreteJson.getIn(["blocks"]).size; index++)
   {
     // Get the name
-    name = immutableConcreteJson.getIn(["blocks", i, "name"]);
+    name = immutableConcreteJson.getIn(["blocks", index, "name"]);
 
     // Register the name
     if (name)
@@ -74,7 +75,8 @@ function applyLexicalScope(immutableConcreteJson, parentEnv)
         Immutable.Map(
           {
             // Supply all the information needed to access the runtime value
-            index: i,
+            type: "local",
+            index: index,
             name: name,
             environmentId: enumEnvironmentId,
             tapeId: currentTapeId
@@ -82,11 +84,11 @@ function applyLexicalScope(immutableConcreteJson, parentEnv)
     }
 
     // Is it a simple block?
-    if ((typeof immutableConcreteJson.getIn(["blocks", i, "code"])) === "string")
+    if ((typeof immutableConcreteJson.getIn(["blocks", index, "code"])) === "string")
     {
       // Is this is one of the reserved words?
       if (-1 != RESERVED_WORDS.indexOf(
-          immutableConcreteJson.getIn(["blocks", i, "code"])))
+          immutableConcreteJson.getIn(["blocks", index, "code"])))
       {
         // Yes, so do nothing
         continue;
@@ -95,12 +97,12 @@ function applyLexicalScope(immutableConcreteJson, parentEnv)
       // No, so it must be a previously defined word or error
       // TODO: Remove when call by reference is implemented
       throw new Error("Call by reference not implemented");
-      // referencesToCheck.push(immutableConcreteJson.getIn(["blocks", i, "code"]));
+      // referencesToCheck.push(immutableConcreteJson.getIn(["blocks", index, "code"]));
       continue;
     }
 
     // It's a complex block so switch on the block's type
-    switch (immutableConcreteJson.getIn(["blocks", i, "code", "type"]))
+    switch (immutableConcreteJson.getIn(["blocks", index, "code", "type"]))
     {
     // Values which do not increase scope or reference scope
     case "number" :
@@ -114,7 +116,7 @@ function applyLexicalScope(immutableConcreteJson, parentEnv)
     case "valueReference" :
     case "address" :
       referencesToCheck.push(
-        immutableConcreteJson.getIn(["blocks", i, "code", "value"]));
+        immutableConcreteJson.getIn(["blocks", index, "code", "value"]));
       break;
 
     case "falsey" :
@@ -122,23 +124,67 @@ function applyLexicalScope(immutableConcreteJson, parentEnv)
       // throw new Error("Falsey lexical scope not implemented");
       // Not sure about this because Falsey inner value may be a fold or it may be a reference itself. 
       // referencesToCheck.push(
-      //   immutableConcreteJson.getIn(["blocks", i, "code", "value"]),
+      //   immutableConcreteJson.getIn(["blocks", index, "code", "value"]),
       //   environment);
       break;
     case "fold" :
-      // A thing to do!
+      // If there's an arg list on the fold, check that all the arg list tape's members are named
+      if (immutableConcreteJson.getIn(["blocks", index, "code", "args"]))
+      {
+        for (
+          index2 = 0;
+          index2 < immutableConcreteJson.getIn(["blocks", index, "code", "args", "blocks"]).length;
+          index2++)
+        {
+          // Get the name
+          name = 
+            immutableConcreteJson.getIn(["blocks", index, "code", "args", "blocks", index2, "name"]);
+
+          // Register the name
+          if (name)
+          {
+            environment = environment.setIn(
+              ["names", name], 
+              Immutable.Map(
+                {
+                  // Supply all the information needed to access the runtime value
+                  type: "argument",
+                  index: index2,
+                  name: name,
+                  environmentId: enumEnvironmentId,
+                  // TODO: Not sure if this is correct tape id, or if this should be the tape ID of the fold's tape... I think the latter so this is incorrect
+                  tapeId: currentTapeId
+                }));
+          }
+          else
+          {
+            throw new Error("Formal arguments must be named")
+          }
+        }
+        
+        // Then run the same process on the arg list tape
+        newScopesToApply.push(
+          {
+            blockIndex: index,
+            tape: 
+              immutableConcreteJson.getIn(immutableConcreteJson.getIn(["blocks", index, "code", "args"]))
+          });
+      }
+
+
+      // Apply lex rules to the fold's tape
       newScopesToApply.push(
         {
-          blockIndex: i,
+          blockIndex: index,
           tape: 
-            immutableConcreteJson.getIn(["blocks", i, "code", "tape"])
+            immutableConcreteJson.getIn(["blocks", index, "code", "tape"])
         });
       break;
     default :
       // Unrecognized block!
       throw new Error(
         "Lexical analyzer doesn't recognize block of type " +
-        immutableConcreteJson.getIn(["blocks", i, "type"]));
+        immutableConcreteJson.getIn(["blocks", index, "type"]));
     }
   }
 
@@ -150,14 +196,14 @@ function applyLexicalScope(immutableConcreteJson, parentEnv)
   }
 
   // Lexical scopes to apply
-  for (i = 0; i < newScopesToApply.length; i++)
+  for (index = 0; index < newScopesToApply.length; index++)
   {
     // Apply a lexical scope to this tape using the current environment as
     // its parent
     immutableConcreteJson =
       immutableConcreteJson.setIn(
-        ["blocks", newScopesToApply[i].blockIndex, "code", "tape"],
-        applyLexicalScope(newScopesToApply[i].tape, environment));
+        ["blocks", newScopesToApply[index].blockIndex, "code", "tape"],
+        applyLexicalScope(newScopesToApply[index].tape, environment));
   }
 
   // Attach the environment to the current thing
