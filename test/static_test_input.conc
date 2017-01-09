@@ -66,3 +66,7 @@ d:5 *d 4 - e:_ [ d:2 *d *e + _ ] call _
 /* Calls with value reference input */
 
 f:[ 3 4 + _ ] _ *f call _
+
+/* Call with formal arguments */
+
+5 f:( a:_ )[ *a 3 + _ ] call _

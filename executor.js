@@ -312,7 +312,7 @@ function executeStepIn(concreteJson)
         throw new Error(
           "RuntimeError: Call or apply must have a fold as first input");
       }
-      
+
       // If foldToCall is a valueReference, deference it
       // It's a complex block so switch on the block's type
       switch (foldToCall.getIn(["code", "type"]))
@@ -370,11 +370,12 @@ function executeStepIn(concreteJson)
       {
         throw new Error("RuntimeError: Apply input must be a fold");
       }
-
+      
       // If there are arguments on the fold...
       if (foldToCall.getIn(["code", "args"]) &&
-          foldToCall.getIn(["code", "args", "blocks"]).length > 0)
+          foldToCall.getIn(["code", "args", "blocks"]).size > 0)
       {
+debugger;
         // If it's a call
         if (blockToRun.get("code") === "call")
         {
@@ -395,7 +396,7 @@ function executeStepIn(concreteJson)
           // It's an apply, so run through each block in the arg fold
           for (
             index2 = 0;
-            index2 < foldToCall.getIn(["code", "args", "blocks"]).length;
+            index2 < foldToCall.getIn(["code", "args", "blocks"]).size;
             index2++)
           {
             // Set the argument block at that index

@@ -125,13 +125,18 @@ fs.readFile(
             "but actually " +
             "\n" +
             "%s" +
+            "\n" +
+            "Stack:"  +
+            "\n" +
+            "%s" +
             "\n",
             errors[i].errorType,
             errors[i].message,
             errors[i].line,
             errors[i].in,
             errors[i].expected,
-            errors[i].errorType);
+            errors[i].errorType + ": " + errors[i].message,
+            errors[i].stack);
         }
 
         for (i = 0; i < misses.length; i++)

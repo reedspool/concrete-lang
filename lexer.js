@@ -1,5 +1,5 @@
 var Immutable = require("immutable");
-var RESERVED_WORDS = ["return", "call", "_"];
+var RESERVED_WORDS = ["return", "call", "apply", "_"];
 var enumEnvironmentId = 0;
 var enumTapeId = 0;
 
@@ -24,10 +24,9 @@ module.exports =
 // If no entry found, runtime undefined... shouldn't happen ever b/c lex catches
 //
 // Throws Error on bad name useage
-function applyLexicalScope(immutableConcreteJson, parentEnv)
+function applyLexicalScope(immutableConcreteJson, parentEnv, args)
 {
   var index;
-  var index2;
   var name;
   var environment = Immutable.Map();
   var referencesToCheck = [];
@@ -59,6 +58,53 @@ function applyLexicalScope(immutableConcreteJson, parentEnv)
 
     // Apply the tape ID to the tape itself for future reference (pun intended)
     immutableConcreteJson = immutableConcreteJson.set("id", currentTapeId);
+  }
+
+  // If args supplied, check that all the arg list tape's members are named
+  if (args)
+  {
+    for (
+      index = 0;
+      index < args.getIn(["blocks"]).size;
+      index++)
+    {
+      // Get the name
+      name = 
+        args.getIn(["blocks", index, "name"]);
+
+      // Register the name
+      if (name)
+      {
+        environment = environment.setIn(
+          ["names", name], 
+          Immutable.Map(
+            {
+              // Supply all the information needed to access the runtime value
+              type: "argument",
+              index: index,
+              name: name,
+              environmentId: enumEnvironmentId,
+              tapeId: currentTapeId
+            }));
+      }
+      else
+      {
+        throw new Error("Formal arguments must be named")
+      }
+    }
+    
+    // Then run the same process on the arg list tape
+    // TODO: Are formal arguments really a tape? 
+    //     Pros:
+    //       * Default values
+    //     Cons:
+    //       * These tapes need an ID, don't get one at the moment
+    //       * The definitions should be checked from the above level, not here
+    newScopesToApply.push(
+      {
+        blockIndex: index,
+        tape: args
+      });
   }
   
   // Scan each block
@@ -128,56 +174,13 @@ function applyLexicalScope(immutableConcreteJson, parentEnv)
       //   environment);
       break;
     case "fold" :
-      // If there's an arg list on the fold, check that all the arg list tape's members are named
-      if (immutableConcreteJson.getIn(["blocks", index, "code", "args"]))
-      {
-        for (
-          index2 = 0;
-          index2 < immutableConcreteJson.getIn(["blocks", index, "code", "args", "blocks"]).length;
-          index2++)
-        {
-          // Get the name
-          name = 
-            immutableConcreteJson.getIn(["blocks", index, "code", "args", "blocks", index2, "name"]);
-
-          // Register the name
-          if (name)
-          {
-            environment = environment.setIn(
-              ["names", name], 
-              Immutable.Map(
-                {
-                  // Supply all the information needed to access the runtime value
-                  type: "argument",
-                  index: index2,
-                  name: name,
-                  environmentId: enumEnvironmentId,
-                  // TODO: Not sure if this is correct tape id, or if this should be the tape ID of the fold's tape... I think the latter so this is incorrect
-                  tapeId: currentTapeId
-                }));
-          }
-          else
-          {
-            throw new Error("Formal arguments must be named")
-          }
-        }
-        
-        // Then run the same process on the arg list tape
-        newScopesToApply.push(
-          {
-            blockIndex: index,
-            tape: 
-              immutableConcreteJson.getIn(immutableConcreteJson.getIn(["blocks", index, "code", "args"]))
-          });
-      }
-
-
       // Apply lex rules to the fold's tape
       newScopesToApply.push(
         {
           blockIndex: index,
           tape: 
-            immutableConcreteJson.getIn(["blocks", index, "code", "tape"])
+            immutableConcreteJson.getIn(["blocks", index, "code", "tape"]),
+          args: immutableConcreteJson.getIn(["blocks", index, "code", "args"])
         });
       break;
     default :
@@ -203,7 +206,10 @@ function applyLexicalScope(immutableConcreteJson, parentEnv)
     immutableConcreteJson =
       immutableConcreteJson.setIn(
         ["blocks", newScopesToApply[index].blockIndex, "code", "tape"],
-        applyLexicalScope(newScopesToApply[index].tape, environment));
+        applyLexicalScope(
+          newScopesToApply[index].tape,
+          environment,
+        newScopesToApply[index].args));
   }
 
   // Attach the environment to the current thing

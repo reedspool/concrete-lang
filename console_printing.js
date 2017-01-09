@@ -179,7 +179,7 @@ function prettyBlock(concreteJson, options)
   if (typeof immutableConcreteJson.get("code") === "string")
   {
     // Yes, so merely print out the code
-    return immutableConcreteJson.get("code");
+    return prefix + immutableConcreteJson.get("code");
   }
 
   // It's a complex block so switch on the block's type
@@ -187,7 +187,16 @@ function prettyBlock(concreteJson, options)
   {
   // Values -- noops
   case "fold" :
-    blockStr = "[ " +
+    if (immutableConcreteJson.get("code").get("args"))
+    {
+      blockStr = "( " +
+        prettyTape(
+          immutableConcreteJson.get("code").get("args"), options) +
+        " )";
+    }
+
+    blockStr = blockStr +
+      "[ " +
       prettyTape(
         immutableConcreteJson.get("code").get("tape"), options) +
       " ]";
