@@ -1,0 +1,16 @@
+[ 4 5 ] f apply _ f:(a:_ b:_)[ *a *b + _ ]
+
+[ 3 3 + _ ]
+sum:( a:_ b:_ )[ *a *b + _ ]
+(3 4)sum _ 
+#JS: function sum(a, b){ return a + b }
+#JS6: sum = (a, b) => a + b
+#JS: sum(3, 4)
+noop:[]
+stream-writer:[
+  *IN "," stream-split _ ;
+  _ [
+      *IN parseFloat _ 3 * _
+    ] stream-map _ ]
+*STDIN stream-writer _ ;
+_ *STDOUT stream-pipe

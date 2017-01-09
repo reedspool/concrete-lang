@@ -46,6 +46,7 @@ function executeStepIn(concreteJson)
   var parsedResult;
   var result;
   var index;
+  var index2;
   var blockToRun;
   var prevStackLevel;
   var prevIndex;
@@ -59,6 +60,7 @@ function executeStepIn(concreteJson)
   var operator;
   var inputIndex;
   var nextInput;
+  var foldToCall;
 
   // Coerce to Immutable
   if (concreteJson instanceof Immutable.Map)
@@ -174,7 +176,7 @@ function executeStepIn(concreteJson)
     //       });
     // }
 
-    // // We now have all the information, so we can fill up the stack frame's vals
+    // // We now have the information, so we can fill up the stack frame's vals
     // for (index = 0; index < codeToCheckForNames.size; index++)
     // {
     //   blockToCheckForNames = codeToCheckForNames.get(index);
@@ -216,7 +218,7 @@ function executeStepIn(concreteJson)
     //       );
     // }
 
-    // // Done adding to this frame's references, add the slot back into the table
+    // // Done adding to this frame references, add the slot back into the table
     // immutableConcreteJson =
     //   immutableConcreteJson
     //     .setIn(
@@ -242,7 +244,7 @@ function executeStepIn(concreteJson)
   if (! blockToRun) 
   {
     // Done with step, don't continue, return
-    return returnPreviousToCarriageAndExitFrameAndEndStep(immutableConcreteJson);
+    return returnValToCarriageAndExitFrameAndEndStep(immutableConcreteJson);
   }
 
   // Is it a simple block?
@@ -256,7 +258,7 @@ function executeStepIn(concreteJson)
       break;
 
     case "return" :
-      return returnPreviousToCarriageAndExitFrameAndEndStep(immutableConcreteJson);
+      return returnValToCarriageAndExitFrameAndEndStep(immutableConcreteJson);
       break;
 
     case "apply":
@@ -266,10 +268,17 @@ function executeStepIn(concreteJson)
       //   If applying, singular input must be of type fold
       //       look for formal args and declare and define them
       //   If calling, singular input can be any value
-      //       look for formal args and declare and define them all, redefine first formal arg to the input val
+      //       look for formal args and declare and define them all,
+      //       redefine first formal arg to the input val
       stackLevel = stackLevel + 1;
 
-      nextInput = codeToRun.get(index - 1);
+      // Can't call at the beginning of a tape, input required!
+      if (index < 2)
+      {
+        throw new Error(
+          "RuntimeError: Call/apply without required fold and input at index " +
+          index);
+      }
 
       // Create a new stack frame
       immutableConcreteJson =
@@ -280,7 +289,9 @@ function executeStepIn(concreteJson)
             {
               frameId: enumFrameId++,
               blocks: {},
+              argumentBlocks: {},
               environment: {},
+              input: {},
               runner:
               {
                 index: 0,
@@ -292,17 +303,95 @@ function executeStepIn(concreteJson)
       immutableConcreteJson =
         immutableConcreteJson.set("stackLevel", stackLevel);
 
+      // Find the location of the block
+      foldToCall = codeToRun.get(index - 1);
+
+      if (! foldToCall)
+      {
+        throw new Error(
+          "RuntimeError: Call or apply must have a fold as first input");
+      }
+
+      // TODO: If foldToCall is a valueReference, deference it
+      // TODO: If the foldToCall is not a fold, err
+
       // Add the blocks from the tape to the stack frame  
       immutableConcreteJson = 
         immutableConcreteJson.setIn(
           ["callStack", stackLevel, "blocks"],
-          codeToRun.getIn([index - 1, "code", "tape", "blocks"]));
+          foldToCall.getIn(["code", "tape", "blocks"]));
 
       // Add the lexical environment from the tape to the stack frame  
       immutableConcreteJson = 
         immutableConcreteJson.setIn(
           ["callStack", stackLevel, "environment"],
-          codeToRun.getIn([index - 1, "code", "tape", "environment"]));
+          foldToCall.getIn(["code", "tape", "environment"]));
+
+      // Find the location of the input
+      nextInput = codeToRun.get(index - 2);
+
+      // Can't call at the beginning of a tape, input required!
+      if (! nextInput)
+      {
+        throw new Error(
+          "RuntimeError: Call/apply without input at index " + index);
+      }
+
+      // If we're doing an apply, the input must be of type fold
+      if (blockToRun.get("code") === "apply" && 
+          (typeof nextInput.get("code") === "string" ||
+            nextInput.getIn(["code", "type"]) !== "fold"))
+      {
+        throw new Error("RuntimeError: Apply input must be a fold");
+      }
+
+      // If there are arguments on the fold...
+      if (foldToCall.getIn(["code", "args"]) &&
+          foldToCall.getIn(["code", "args", "blocks"]).length > 0)
+      {
+        // If it's a call
+        if (blockToRun.get("code") === "call")
+        {
+          // Just throw the input in the first place
+          immutableConcreteJson = 
+            immutableConcreteJson.setIn(
+              ["callStack", stackLevel, "argumentBlocks", 0],
+              nextInput);
+
+          // Set the name to the name of the formal argument
+          immutableConcreteJson = 
+            immutableConcreteJson.setIn(
+              ["callStack", stackLevel, "argumentBlocks", 0, "name"],
+              foldToCall.getIn(["code", "args", "blocks", 0, "name"]));
+        }
+        else
+        {
+          // It's an apply, so run through each block in the arg fold
+          for (
+            index2 = 0;
+            index2 < foldToCall.getIn(["code", "args", "blocks"]).length;
+            index2++)
+          {
+            // Set the argument block at that index
+            immutableConcreteJson = 
+              immutableConcreteJson.setIn(
+                ["callStack", stackLevel, "argumentBlocks", index2],
+                nextInput.getIn(["code", "tape", "blocks", index2]));
+ 
+            // Set the name
+            immutableConcreteJson = 
+              immutableConcreteJson.setIn(
+                ["callStack", stackLevel, "argumentBlocks", index2, "name"],
+                foldToCall.getIn(["code", "args", "blocks", index2, "name"]));
+          }
+        }
+      }
+
+      // Either way, put the whole thing in the input slot
+      immutableConcreteJson = 
+        immutableConcreteJson.setIn(
+          ["callStack", stackLevel, "input"],
+          nextInput);
 
       // Done stepping into new function call
       // Flip the flag back
@@ -341,7 +430,10 @@ function executeStepIn(concreteJson)
       operator = blockToRun.get("code").get("op")
 
       // Walk backwards from input count
-      for (inputIndex = 1; inputIndex <= blockToRun.get("code").get("countInputs"); inputIndex++)
+      for (
+        inputIndex = 1;
+        inputIndex <= blockToRun.get("code").get("countInputs");
+        inputIndex++)
       {
         nextInput = codeToRun.get(index - inputIndex);
 
@@ -382,7 +474,8 @@ function executeStepIn(concreteJson)
           // It's a complex block so switch on the block's type
           switch (nextInput.getIn(["code", "type"]))
           {
-          // These cases are direct references, they should be represented in environment
+          // These cases are direct references, they should be represented 
+          // in environment
           case "valueReference" :
             nextInput = dereferenceValueBlock(
               nextInput.getIn(["code", "value"]));
@@ -601,7 +694,8 @@ function executeStepIn(concreteJson)
         }
         else
         {
-          // Use the original parser to turn host language result into concrete result
+          // Use the original parser to turn host language (js) result into
+          // concrete result
           parsedResult = parser.parseBlock("!'temp'");
 
           // Make into immutable
@@ -623,7 +717,7 @@ function executeStepIn(concreteJson)
           throw new Error("Unhandled operator " + operator);
         }
 
-        // Use the original parser to turn JavaScript result into concrete result
+        // Use the original parser to turn JS result into concrete result
         parsedResult = parser.parseBlock("" + result);
 
         // Make into immutable
@@ -673,7 +767,7 @@ function executeStepIn(concreteJson)
   //      move previous stack level index + 1
   //      destroy code
   // 
-  function returnPreviousToCarriageAndExitFrameAndEndStep(immutableConcreteJson)
+  function returnValToCarriageAndExitFrameAndEndStep(immutableConcreteJson)
   {
     if (stackLevel === 0)
     {
@@ -752,7 +846,7 @@ function executeStepIn(concreteJson)
   //
   function dereferenceValueBlock(name)
   {
-    var checkStackLevel = stackLevel;
+    var checkStackLevel;
     var envForName;
     
     // TODO: Implement closures
@@ -760,7 +854,7 @@ function executeStepIn(concreteJson)
     //   immutableConcreteJson
     //     .getIn(["callStack", stackLevel, "frameId"]);
 
-    for (; checkStackLevel >= 0; checkStackLevel--)
+    for (checkStackLevel = stackLevel; checkStackLevel >= 0; checkStackLevel--)
     {
       envForName = immutableConcreteJson.getIn(
           ["callStack", checkStackLevel, 
@@ -769,11 +863,27 @@ function executeStepIn(concreteJson)
       // Did we catch something?
       if (envForName)
       {
-        // We found the correct stack level, so find the actual
-        // entry in that call stack and return that
-        return immutableConcreteJson.getIn(
-          ["callStack", checkStackLevel, 
-            "blocks", envForName.get("index")]);
+        switch (envForName.get("type"))
+        {
+          case "local" :
+            // We found the correct stack level, so find the actual
+            // entry in that call stack and return that
+            return immutableConcreteJson.getIn(
+              ["callStack", checkStackLevel, 
+                "blocks", envForName.get("index")]);
+            break;
+          case "argument" :
+            // We found the correct stack level, so find the actual
+            // entry in that call stack and return that
+            return immutableConcreteJson.getIn(
+              ["callStack", checkStackLevel, 
+                "argumentBlocks", envForName.get("index")]);
+            break;
+          default :
+            throw new Error(
+              "RuntimeError: unhandled environment of type " +
+              envForName.get("type"));
+        }
       }
     }
 

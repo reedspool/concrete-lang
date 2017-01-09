@@ -75,7 +75,7 @@ fs.readFile(
                 error instanceof interpreter.SyntaxError
                 ? "SyntaxError"
                 : "RuntimeError",
-              line: i,
+              line: i + 1,
               in: inputs[i],
               out: actualOutput,
               expected: expectedOutputs[i]  
@@ -95,7 +95,7 @@ fs.readFile(
           {
             misses.push(
             {
-              line: i,
+              line: i + 1,
               in: inputs[i],
               out: actualOutput,
               expected: expectedOutputs[i]  
