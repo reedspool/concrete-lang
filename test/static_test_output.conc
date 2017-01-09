@@ -62,3 +62,7 @@ c:2 [ _ [ *c 2 + _ ] call _ ] call 4 2 + 6
 e:1 [ d:2 *d *e + _ ] call 3
 d:5 *d 4 - e:1 [ d:2 *d *e + _ ] call 3
 5 ! falsey:!5 *falsey & !5
+
+
+
+f:[ 3 4 + _ ] _ *f call 7

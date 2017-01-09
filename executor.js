@@ -306,14 +306,40 @@ function executeStepIn(concreteJson)
       // Find the location of the block
       foldToCall = codeToRun.get(index - 1);
 
-      if (! foldToCall)
+      // The fold to call must be a fold!
+      if (! foldToCall || typeof foldToCall.get("code") === "string")
       {
         throw new Error(
           "RuntimeError: Call or apply must have a fold as first input");
       }
+      
+      // If foldToCall is a valueReference, deference it
+      // It's a complex block so switch on the block's type
+      switch (foldToCall.getIn(["code", "type"]))
+      {
+      // These cases are direct references, they should be represented 
+      // in environment
+      case "fold" :
+        // If it's a fold, it's gold!
+        break;
+      case "valueReference" :
+        foldToCall = dereferenceValueBlock(
+          foldToCall.getIn(["code", "value"]));
 
-      // TODO: If foldToCall is a valueReference, deference it
-      // TODO: If the foldToCall is not a fold, err
+        // If it's STILL not a fold, that's gonna be a problem
+        if ((typeof foldToCall.get("code") === "string") || 
+              foldToCall.getIn(["code", "type"]) !== "fold")
+        {
+          throw new Error(
+            "RuntimeError: Call or apply input was value reference that did" +
+            " not resolve to fold");
+        }
+        break;
+      default :
+        throw new Error(
+          "RuntimeError: Call or apply must have a fold as first input");
+        break;
+      }
 
       // Add the blocks from the tape to the stack frame  
       immutableConcreteJson = 
