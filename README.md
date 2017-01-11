@@ -15,7 +15,7 @@ npm install;
 Run the static tests with this command
 
 ```bash
-cd test/ ; time ./run_all ; cd ..
+cd test/ ; time ./run_all_tests ; cd ..
 ```
 
 ## Run
