@@ -41,11 +41,19 @@
   /* ---- Syntactic Grammar ----- */
 
   Tape
-    = __ blocks:(Block __)* __ {
+    = __ blocks:(Block __ comma:"," ? __)* __ {
+    // Inlined extractList() and modified to include comma info
+    var result = new Array(blocks.length), index = 0, i;
+
+      for (i = 0; i < blocks.length; i++) {
+        result[i] = blocks[i][index];
+        result[i].comma = !!blocks[i][2];
+      }
+      
       return {
         type:        "tape",
         original:    text(),
-        blocks:      extractList(blocks, 0)
+        blocks:      result //extractList(blocks, 0)
       };
     }
 
