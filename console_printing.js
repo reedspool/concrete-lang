@@ -158,6 +158,7 @@ function prettyBlock(concreteJson, options)
   var immutableConcreteJson;
   var prefix = "";
   var blockStr = "";
+  var suffix = "";
 
   // Coerce to Immutable
   if (concreteJson instanceof Immutable.Map)
@@ -227,5 +228,12 @@ function prettyBlock(concreteJson, options)
     break;
   }
 
-  return prefix + blockStr;
+  debugger;
+
+  if (immutableConcreteJson.get("comma"))
+  {
+    suffix = ",";
+  }
+
+  return prefix + blockStr + suffix;
 }
