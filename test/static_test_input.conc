@@ -19,61 +19,61 @@ _
 
 /* Basic Operations */
 
-1 1 + _
-12 1 - _
-12 35 - _
-1 1 * _
-234 456456 * _
-13 10 % _
-360 120 / _
+1, 1 + _
+12, 1 - _
+12, 35 - _
+1, 1 * _
+234, 456456 * _
+13, 10 % _
+360, 120 / _
 40 ! _
 !40 ! _
 
 /* Stringing Operations together */
 
-2 2 + _ 5 + _ 17 + _
+2, 2 + _, 5 + _, 17 + _
 
 
 /* If truthy, use arg 2; if falsey, user arg 3 */
 
-40 0 1 ? _
-!40 0 1 ? _
+40, 0, 1 ? _
+!40, 0, 1 ? _
 
 /* Short circuit boolean operations */
 
-1 !2 & _
-!1 !2 & _
-!1 2 & _
-1 2 & _
-1 !2 | _
-!1 !2 | _
-!1 2 | _
-1 2 | _
+1, !2 & _
+!1, !2 & _
+!1, 2 & _
+1, 2 & _
+1, !2 | _
+!1, !2 | _
+!1, 2 | _
+1, 2 | _
 
 /* Return anytime */
 
-1 1 + _ 23 * _ return 23234 * _ 234 - _
+1, 1 + _, 23 * _ return 5, 23234 * _, 234 - _
 
 /* Call and response! */
 
-23 [ 23 23 * _ ] call _
-23 [ _ [ _ [ _ [ _ [ _ [ _ [ 4 ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _
-23 [ _ [ _ [ _ [ _ [ _ [ _ [ _ [ _ [ _ [ _ [ _ [ _ [ _ [ _ [ _ [ _ [ _ [ _ [ _ [ _ [ _ [ _ [ _ [ _ [ _ [ _ [ _ [ _ [ _ [ _ [ _ [ _ [ _ [ _ [ _ [ _ [ _ [ _ [ _ [ _ [ _ [ _ [ _ [ _ [ _ [ _ [ _ [ _ [ _ [ _ [ _ [ _ [ _ [ _ [ _ [ _ [ _ [ _ [ _ [ _ [ _ [ _ [ _ [ _ [ _ [ _ [ _ [ _ [ _ [ _ [ 4 ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _
+23, [ 23, 23 * _ ] call _
+23, [ _, [ _, [ _, [ _, [ _, [ _, [ 4 ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _
+23, [ _, [ _, [ _, [ _, [ _, [ _, [ _, [ _, [ _, [ _, [ _, [ _, [ _, [ _, [ _, [ _, [ _, [ _, [ _, [ _, [ _, [ _, [ _, [ _, [ _, [ _, [ _, [ _, [ _, [ _, [ _, [ _, [ _, [ _, [ _, [ _, [ _, [ _, [ _, [ _, [ _, [ _, [ _, [ _, [ _, [ _, [ _, [ _, [ _, [ _, [ _, [ _, [ _, [ _, [ _, [ _, [ _, [ _, [ _, [ _, [ _, [ _, [ _, [ _, [ _, [ _, [ _, [ _, [ _, [ _, [ 4 ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _ ] call _
 
 /* Basic lexical scope! */
-b:2 *b 2 + _
-c:2 [ _ [ *c 2 + _ ] call _ ] call _ 2 + _
-e:1 [ d:2 *d *e + _ ] call _
-d:5 *d 4 - e:_ [ d:2 *d *e + _ ] call _
-5 ! falsey:_ *falsey & _
+b:2 *b, 2 + _
+c:2, [ _, [ *c, 2 + _ ] call _ ] call _, 2 + _
+e:1 [ d:2 *d, *e + _ ] call _
+d:5 *d, 4 - e:_ [ d:2 *d, *e + _ ] call _
+5 ! falsey:_, *falsey & _
 
 /* Calls with value reference input */
 
-f:[ 3 4 + _ ] _ *f call _
+f:[ 3, 4 + _ ] _, *f call _
 
 /* Call with formal arguments */
 
-5 f:( a:_ )[ *a 3 + _ ] call _
+5, f:( a:_ )[ *a, 3 + _ ] call _
 
 /* Apply with no arguments */
 
@@ -81,4 +81,4 @@ f:[ 3 4 + _ ] _ *f call _
 
 /* Apply with formal arguments */
 
-[ 5 6 ] ( a:_ b:_ )[ *a *b * _ ] apply _
+[ 5 6 ] ( a:_ b:_ )[ *a, *b * _ ] apply _
