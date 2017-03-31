@@ -176,11 +176,17 @@ function prettyBlock(concreteJson, options)
     prefix = immutableConcreteJson.get("name") + ":";
   }
 
+  // If this block has a comma
+  if (immutableConcreteJson.get("comma"))
+  {
+    suffix = ",";
+  }
+
   // Is it a simple block?
   if (typeof immutableConcreteJson.get("code") === "string")
   {
     // Yes, so merely print out the code
-    return prefix + immutableConcreteJson.get("code");
+    return prefix + immutableConcreteJson.get("code") + suffix;
   }
 
   // It's a complex block so switch on the block's type
@@ -226,13 +232,6 @@ function prettyBlock(concreteJson, options)
     // Shouldn't get here
     throw new Error("Unable to prettify ", immutableConcreteJson);
     break;
-  }
-
-  debugger;
-
-  if (immutableConcreteJson.get("comma"))
-  {
-    suffix = ",";
   }
 
   return prefix + blockStr + suffix;
