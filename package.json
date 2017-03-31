@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "",
   "main": "concreteparser2.js",
+  "repository": "github.com:reedspool/concrete-lang.git",
   "directories": {
     "test": "test"
   },
