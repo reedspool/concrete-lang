@@ -97,7 +97,7 @@ function executeStepIn(concreteJson)
     // Set it to initial
     stackLevel = 0;
 
-    // Make a new ID for this new frame, ane keep Enumerable
+    // Make a new ID for this new frame, and keep Enumerable
     currentFrameId = enumFrameId++;
 
     // And in the representation
@@ -127,7 +127,7 @@ function executeStepIn(concreteJson)
     immutableConcreteJson = 
       lexer.applyLexicalScope(
         immutableConcreteJson,
-        Immutable.Map()); // TODO: Use this environment Map to link in plugins!!
+        Immutable.Map()); // Future: Use this environment Map to link in plugins/modules!!
 
     // Set the initial code in the stack
     immutableConcreteJson =
@@ -432,7 +432,7 @@ debugger;
       // Check this scope
         // If not there, check parent scopes
         // When you find the code to run, do the call things
-      throw new Error("Calling identifiers not yet implemented");
+      throw new Error("RuntimeError: Calling identifiers not yet implemented");
       break;
     }
   }
@@ -466,7 +466,7 @@ debugger;
 
         if (! nextInput)
         {
-          throw new Error("Not enough inputs for operation");
+          throw new Error("RuntimeError: Not enough inputs for operation");
         }
 
         // Dereference reference values
@@ -479,7 +479,7 @@ debugger;
               nextInput.get("code")))
           {
             throw new Error(
-              "Reserved word " + 
+              "RuntimeError: Reserved word " + 
               nextInput.get("code") +
               " used as input for " + operator);
           }
@@ -487,7 +487,7 @@ debugger;
           // TODO: Implement call references
           // Offer a hint
           throw new Error(
-            "Identifier " + 
+            "RuntimeError: Identifier " + 
             nextInput.get("code") +
             " used as input for " + operator +
             ((Math.random() < 0.5)
@@ -551,6 +551,7 @@ debugger;
                 case "operator" :
                 case "valueReference" :
                   throw new Error(
+                    "RuntimeError: " +
                     inputBlock.getIn(["code", "type"]) +
                     " used as input for " + operator);
                   break;
@@ -558,7 +559,7 @@ debugger;
                 default :
                   // Unrecognized block!
                   throw new Error(
-                    "Unrecognized block of type " +
+                    "RuntimeError: Unrecognized block of type " +
                     blockToRun.get("code").get("type"));
                 }
 
@@ -575,7 +576,7 @@ debugger;
                 if (isNaN(parsed))
                 {
                   // Return undefined, not NaN;
-                  console.warn("Error parseFloat: ", value);
+                  console.warn("RuntimeError: Bad parseFloat ", value);
                   return;
                 }
 
@@ -601,7 +602,7 @@ debugger;
         // If anything else, badness
         if (! result)
         {
-          throw new Error("Expected only numbers or strings to concatenate")
+          throw new Error("RuntimeError: Expected only numbers or strings to concatenate")
         }
       }
       // Is it one of the numbers-only operators?
@@ -619,7 +620,7 @@ debugger;
               if (! parsed && parsed !== 0)
               {
                 throw new Error(
-                  "Non-numeric");
+                  "RuntimeError: Non-numeric input to numeric operator", input.get("code").get("value"));
               }
 
               return parsed;
@@ -741,7 +742,7 @@ debugger;
         // Well, result not being set yet is an error
         if (! result && result !== 0)
         {
-          throw new Error("Unhandled operator " + operator);
+          throw new Error("RuntimeError: Unhandled operator " + operator);
         }
 
         // Use the original parser to turn JS result into concrete result
@@ -769,7 +770,7 @@ debugger;
     default :
       // Unrecognized block!
       throw new Error(
-        "Unrecognized block of type " +
+        "RuntimeError: Unrecognized block of type " +
         blockToRun.get("code").get("type"));
     }
   }
@@ -915,7 +916,7 @@ debugger;
     }
 
     // We've walked the entire tree,
-    throw new Error("Name " + name + " never declared");
+    throw new Error("RuntimeError: Name " + name + " never declared");
 
     // TODO: Implement closures
     // if (! envForName)
