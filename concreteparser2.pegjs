@@ -142,11 +142,10 @@
     = DecimalNumber
       / IntegerNumber
 
-
   DecimalNumber = neg:("-")? number:([0-9]* "." [0-9]+) {
-    // Got Halfway to more numbers and stopped
+    // Got Halfway to scientific numbers and stopped
     // /(([0-9]+)|([0-9]+(\.[0-9]+))|([0-9]+[eE][0-9]+)
-    console.log(number[0].join("")+number[1]+number[2].join(""));
+
     return {
       type: "number",
       value: parseFloat(number[0].join("")+number[1]+number[2].join(""), 10) * (extractOptional(neg, 0) ? -1 : 1)
