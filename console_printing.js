@@ -182,13 +182,6 @@ function prettyBlock(concreteJson, options)
     suffix = ",";
   }
 
-  // Is it a simple block?
-  if (typeof immutableConcreteJson.get("code") === "string")
-  {
-    // Yes, so merely print out the code
-    return prefix + immutableConcreteJson.get("code") + suffix;
-  }
-
   // It's a complex block so switch on the block's type
   switch (immutableConcreteJson.get("code").get("type"))
   {
@@ -208,6 +201,15 @@ function prettyBlock(concreteJson, options)
         immutableConcreteJson.get("code").get("tape"), options) +
       " ]";
     break;
+  // Reserved words like call apply return _
+  case "reserved" :
+    if (immutableConcreteJson.get("code").get("value") == "blank")
+    {
+      // Special case, blanks are underscores
+      blockStr = "_";
+      break;
+    }
+    // This reserved word's value is exactly its output, continue
   case "callIdentifier" :
   case "number" :
     blockStr = immutableConcreteJson.get("code").get("value");

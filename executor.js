@@ -245,16 +245,17 @@ function executeStepIn(concreteJson)
     return returnValToCarriageAndExitFrameAndEndStep(immutableConcreteJson);
   }
 
-  // Is it a simple block?
-  if (typeof blockToRun.get("code") === "string")
+  // It's a complex block so switch on the block's type
+  switch (blockToRun.get("code").get("type"))
   {
-    // Yes, so switch on the code
-    switch (blockToRun.get("code"))
+  // Reserved words
+  case "reserved" :
+    // Yes, so switch on the word itself
+    switch (blockToRun.get("code").get("value"))
     {
-    case "_" :
+    case "blank" :
       // Do nothing
       break;
-
     case "return" :
       return returnValToCarriageAndExitFrameAndEndStep(immutableConcreteJson);
       break;
@@ -269,351 +270,348 @@ function executeStepIn(concreteJson)
       // Check this scope
         // If not there, check parent scopes
         // When you find the code to run, do the call things
-      throw new Error("RuntimeError: Calling identifiers not yet implemented");
+      throw new Error(
+        "RuntimeError: Unrecognized reserved word " +
+        blockToRun.get("code").get("type"));
       break;
     }
-  }
-  else
-  {
-    // It's a complex block so switch on the block's type
-    switch (blockToRun.get("code").get("type"))
+    // Do nothing more
+    break;
+  // Values -- noops
+  case "fold" :
+  case "number" :
+  case "string" :
+  case "address" :
+  case "falsey" :
+  case "valueReference" :
+    // Do nothing
+    break;
+  // A thing to do!
+  case "callIdentifier" :
+    return callOrApplyAndEnterNewFrame(
+      immutableConcreteJson, stackLevel, runnerIndex, enumFrameId++, codeToRun);
+    break;
+  case "operator" :
+    inputs = [];
+    result;
+    operator = blockToRun.get("code").get("op")
+
+    // Walk backwards from input count
+    for (
+      inputIndex = 1;
+      inputIndex <= blockToRun.get("code").get("countInputs");
+      inputIndex++)
     {
-    // Values -- noops
-    case "fold" :
-    case "number" :
-    case "string" :
-    case "address" :
-    case "falsey" :
-    case "valueReference" :
-      // Do nothing
-      break;
-    // A thing to do!
-    case "callIdentifier" :
-      return callOrApplyAndEnterNewFrame(
-        immutableConcreteJson, stackLevel, runnerIndex, enumFrameId++, codeToRun);
-      break;
-    case "operator" :
-      inputs = [];
-      result;
-      operator = blockToRun.get("code").get("op")
+      nextInput = codeToRun.get(runnerIndex - inputIndex);
 
-      // Walk backwards from input count
-      for (
-        inputIndex = 1;
-        inputIndex <= blockToRun.get("code").get("countInputs");
-        inputIndex++)
+      if (! nextInput)
       {
-        nextInput = codeToRun.get(runnerIndex - inputIndex);
+        throw new Error("RuntimeError: Not enough inputs for operation");
+      }
 
-        if (! nextInput)
+      // Dereference reference values
+
+      // Is it a simple block?
+      if (typeof nextInput.get("code") === "string")
+      {
+        // Is this is one of the reserved words?
+        if (-1 != RESERVED_WORDS.indexOf(
+            nextInput.get("code")))
         {
-          throw new Error("RuntimeError: Not enough inputs for operation");
-        }
-
-        // Dereference reference values
-
-        // Is it a simple block?
-        if (typeof nextInput.get("code") === "string")
-        {
-          // Is this is one of the reserved words?
-          if (-1 != RESERVED_WORDS.indexOf(
-              nextInput.get("code")))
-          {
-            throw new Error(
-              "RuntimeError: Reserved word " + 
-              nextInput.get("code") +
-              " used as input for " + operator);
-          }
-
-          // TODO: Implement call references
-          // Offer a hint
           throw new Error(
-            "RuntimeError: Identifier " + 
+            "RuntimeError: Reserved word " + 
             nextInput.get("code") +
-            " used as input for " + operator +
-            ((Math.random() < 0.5)
-              ? ". Perhaps you meant the value reference, *"
-              : ". Perhaps you meant the address reference, @") +
-            nextInput.get("code") +
-            "?");
-        }
-        else
-        {
-          // It's a complex block so switch on the block's type
-          switch (nextInput.getIn(["code", "type"]))
-          {
-          // These cases are direct references, they should be represented 
-          // in environment
-          case "valueReference" :
-            nextInput = dereferenceValueBlock(
-              nextInput.getIn(["code", "value"]));
-            break;
-          default :
-            // Do nothing, it's just a normal value.
-            break;
-          }
+            " used as input for " + operator);
         }
 
-        // Front-load it, so left-most, top-most input is always first
-        inputs.unshift(nextInput);
+        // TODO: Implement call references
+        // Offer a hint
+        throw new Error(
+          "RuntimeError: Identifier " + 
+          nextInput.get("code") +
+          " used as input for " + operator +
+          ((Math.random() < 0.5)
+            ? ". Perhaps you meant the value reference, *"
+            : ". Perhaps you meant the address reference, @") +
+          nextInput.get("code") +
+          "?");
+      }
+      else
+      {
+        // It's a complex block so switch on the block's type
+        switch (nextInput.getIn(["code", "type"]))
+        {
+        // These cases are direct references, they should be represented 
+        // in environment
+        case "valueReference" :
+          nextInput = dereferenceValueBlock(
+            nextInput.getIn(["code", "value"]));
+          break;
+        default :
+          // Do nothing, it's just a normal value.
+          break;
+        }
       }
 
-      // Are we adding/concatenating?
-      if(operator === "+")
-      {
-        // "+" operator is Plus or Concatenate
-        // If 2 numbers, Plus
-        // If 1 num 1 string, Concatenate
-        // If anything else, throw an error
-        inputs = 
-          inputs
-            .map(
-              function (inputBlock)
-              {
-                var value;
+      // Front-load it, so left-most, top-most input is always first
+      inputs.unshift(nextInput);
+    }
 
-                // It's a complex block so switch on the block's type
-                switch (inputBlock.getIn(["code", "type"]))
-                {
-                // Values which do not increase scope or reference scope
-                case "number" :
-                  // These are cool
-                  value = inputBlock.getIn(["code", "value"]);
-                  break;
-                case "string" :
-                  // These are cool
-                  return inputBlock.getIn(["code", "value"]);
-                  break;
-
-                // Invalid ops
-                case "address" :
-                case "falsey" :
-                case "fold" :
-                case "operator" :
-                case "valueReference" :
-                  throw new Error(
-                    "RuntimeError: " +
-                    inputBlock.getIn(["code", "type"]) +
-                    " used as input for " + operator);
-                  break;
-
-                default :
-                  // Unrecognized block!
-                  throw new Error(
-                    "RuntimeError: Unrecognized block of type " +
-                    blockToRun.get("code").get("type"));
-                }
-
-                // If something went wrong...
-                if (! value && value !== 0)
-                {
-                  // Return undefined, instead of whatever it is
-                  return;
-                }
-
-                var parsed = parseFloat(value, 10)
-
-                // If the parsing was bungled...
-                if (isNaN(parsed))
-                {
-                  // Return undefined, not NaN;
-                  console.warn("RuntimeError: Bad parseFloat ", value);
-                  return;
-                }
-
-                // ALL GOOD, PROPER VALUE FOUND
-                return parsed;
-              });
-
-        // If String and number, coerce to string and concatenate
-        // Luckily JS takes care of this for us!
-        if (
-          (typeof inputs[0] === "number"
-            ||
-            typeof inputs[0] === "string")
-          &&
-          (typeof inputs[1] === "number"
-            ||
-            typeof inputs[1] === "string")
-          )
-        {
-          result = inputs[0] + inputs[1];
-        }
-
-        // If anything else, badness
-        if (! result)
-        {
-          throw new Error("RuntimeError: Expected only numbers or strings to concatenate")
-        }
-      }
-      // Is it one of the numbers-only operators?
-      else if(operator.match(/[-/*%<>]/))
-      {
-        // Attempt to coerce inputs
-        inputs = 
-          inputs.map(
-            function (input)
+    // Are we adding/concatenating?
+    if(operator === "+")
+    {
+      // "+" operator is Plus or Concatenate
+      // If 2 numbers, Plus
+      // If 1 num 1 string, Concatenate
+      // If anything else, throw an error
+      inputs = 
+        inputs
+          .map(
+            function (inputBlock)
             {
-              var parsed = parseFloat(
-                input.get("code").get("value"), 10)
+              var value;
 
-              // If null or undefined or NaN, but not 0, 0's cool
-              if (! parsed && parsed !== 0)
+              // It's a complex block so switch on the block's type
+              switch (inputBlock.getIn(["code", "type"]))
               {
+              // Values which do not increase scope or reference scope
+              case "number" :
+                // These are cool
+                value = inputBlock.getIn(["code", "value"]);
+                break;
+              case "string" :
+                // These are cool
+                return inputBlock.getIn(["code", "value"]);
+                break;
+
+              // Invalid ops
+              case "address" :
+              case "falsey" :
+              case "fold" :
+              case "operator" :
+              case "valueReference" :
                 throw new Error(
-                  "RuntimeError: Non-numeric input to numeric operator", input.get("code").get("value"));
+                  "RuntimeError: " +
+                  inputBlock.getIn(["code", "type"]) +
+                  " used as input for " + operator);
+                break;
+
+              default :
+                // Unrecognized block!
+                throw new Error(
+                  "RuntimeError: Unrecognized block of type " +
+                  blockToRun.get("code").get("type"));
               }
 
+              // If something went wrong...
+              if (! value && value !== 0)
+              {
+                // Return undefined, instead of whatever it is
+                return;
+              }
+
+              var parsed = parseFloat(value, 10)
+
+              // If the parsing was bungled...
+              if (isNaN(parsed))
+              {
+                // Return undefined, not NaN;
+                console.warn("RuntimeError: Bad parseFloat ", value);
+                return;
+              }
+
+              // ALL GOOD, PROPER VALUE FOUND
               return parsed;
             });
 
-        // Which operator was it exactly?
-        switch(operator)
-        {
-        case "-" :
-          result = inputs[0] - inputs[1];
-          break;
-        case "*" :
-          result = inputs[0] * inputs[1];
-          break;
-        case "/" :
-          result = inputs[0] / inputs[1];
-          break;
-        case "%" :
-          result = inputs[0] % inputs[1];
-          break;
-        case "<" :
-          result = inputs[0] < inputs[1];
-          break;
-        case ">" :
-          result = inputs[0] > inputs[1];
-          break;
-        };
-      }
-      // Is it a boolean OR test?
-      else if (operator === "|")
-      { 
-        // Short circuit operators
-        if (inputs[0].get("code").get("type") === "falsey")
-        {
-          parsedResult = inputs[1];
-        }
-        else
-        {
-          parsedResult = inputs[0];
-        }
-      }
-      // Is it a boolean AND test?
-      else if (operator === "&")
-      { 
-        // Short circuit operators
-        if (inputs[0].get("code").get("type") === "falsey")
-        {
-          parsedResult = inputs[0];
-        }
-        else
-        {
-          parsedResult = inputs[1];
-        }
-      }
-      else if (operator === "?")
-      { 
-        // "If-else" - 3-input 1-output operator
-        //   3 2 >
-        //   test:_ 
-        //   trueResult:@a
-        //   falseResult:@b
-        //   ?
-        //   output:_
-        //   
-        //   /* spoiler: @a *output == _ */
-        // 
-        // test - falsey or not falsey (tm)
-        // trueResult - output if test is not falsey
-        // falseResult - output if test is falsey
-        // Attempt to coerce inputs to booleans
-
-        // It's only false if it's falsey! (tm)
-        parsedResult =
-          inputs[0].get("code").get("type") === "falsey"
-          ? inputs[2]
-          : inputs[1];
-      }
-      else if (operator === "!")
-      { 
-        // "Falseyfier" - 1-input 1-output operator
-        //   input:"abcd"
-        //   !
-        //   output:_
-        //   
-        //   /* spoiler: !"abcd" *output == _ */
-        // 
-        //   input:!"abcd"
-        //   !
-        //   output: _
-        //
-        //   /* spoiler: "abcd" *output == _ */
-        // input - any object, day or night
-        // output - NOT THE INPUT ;)
-
-        // If it's a falsey value, unwrap it
-        if (inputs[0].get("code").get("type") === "falsey")
-        {
-          parsedResult = inputs[0].get("code").get("value");
-        }
-        else
-        {
-          // Use the original parser to turn host language (js) result into
-          // concrete result
-          parsedResult = parser.parseBlock("!'temp'");
-
-          // Make into immutable
-          parsedResult = Immutable.fromJS(parsedResult);
-          
-          // Dispose of the temp inner block and use the input
-          parsedResult = parsedResult.setIn(
-            ["code", "value"],
-            inputs[0]);
-        }
-      }
-
-      // If parsedResult hasn't been set yet
-      if (! parsedResult)
+      // If String and number, coerce to string and concatenate
+      // Luckily JS takes care of this for us!
+      if (
+        (typeof inputs[0] === "number"
+          ||
+          typeof inputs[0] === "string")
+        &&
+        (typeof inputs[1] === "number"
+          ||
+          typeof inputs[1] === "string")
+        )
       {
-        // Well, result not being set yet is an error
-        if (! result && result !== 0)
-        {
-          throw new Error("RuntimeError: Unhandled operator " + operator);
-        }
+        result = inputs[0] + inputs[1];
+      }
 
-        // Use the original parser to turn JS result into concrete result
-        parsedResult = parser.parseBlock("" + result);
+      // If anything else, badness
+      if (! result)
+      {
+        throw new Error("RuntimeError: Expected only numbers or strings to concatenate")
+      }
+    }
+    // Is it one of the numbers-only operators?
+    else if(operator.match(/[-/*%<>]/))
+    {
+      // Attempt to coerce inputs
+      inputs = 
+        inputs.map(
+          function (input)
+          {
+            var parsed = parseFloat(
+              input.get("code").get("value"), 10)
+
+            // If null or undefined or NaN, but not 0, 0's cool
+            if (! parsed && parsed !== 0)
+            {
+              throw new Error(
+                "RuntimeError: Non-numeric input to numeric operator", input.get("code").get("value"));
+            }
+
+            return parsed;
+          });
+
+      // Which operator was it exactly?
+      switch(operator)
+      {
+      case "-" :
+        result = inputs[0] - inputs[1];
+        break;
+      case "*" :
+        result = inputs[0] * inputs[1];
+        break;
+      case "/" :
+        result = inputs[0] / inputs[1];
+        break;
+      case "%" :
+        result = inputs[0] % inputs[1];
+        break;
+      case "<" :
+        result = inputs[0] < inputs[1];
+        break;
+      case ">" :
+        result = inputs[0] > inputs[1];
+        break;
+      };
+    }
+    // Is it a boolean OR test?
+    else if (operator === "|")
+    { 
+      // Short circuit operators
+      if (inputs[0].get("code").get("type") === "falsey")
+      {
+        parsedResult = inputs[1];
+      }
+      else
+      {
+        parsedResult = inputs[0];
+      }
+    }
+    // Is it a boolean AND test?
+    else if (operator === "&")
+    { 
+      // Short circuit operators
+      if (inputs[0].get("code").get("type") === "falsey")
+      {
+        parsedResult = inputs[0];
+      }
+      else
+      {
+        parsedResult = inputs[1];
+      }
+    }
+    else if (operator === "?")
+    { 
+      // "If-else" - 3-input 1-output operator
+      //   3 2 >
+      //   test:_ 
+      //   trueResult:@a
+      //   falseResult:@b
+      //   ?
+      //   output:_
+      //   
+      //   /* spoiler: @a *output == _ */
+      // 
+      // test - falsey or not falsey (tm)
+      // trueResult - output if test is not falsey
+      // falseResult - output if test is falsey
+      // Attempt to coerce inputs to booleans
+
+      // It's only false if it's falsey! (tm)
+      parsedResult =
+        inputs[0].get("code").get("type") === "falsey"
+        ? inputs[2]
+        : inputs[1];
+    }
+    else if (operator === "!")
+    { 
+      // "Falseyfier" - 1-input 1-output operator
+      //   input:"abcd"
+      //   !
+      //   output:_
+      //   
+      //   /* spoiler: !"abcd" *output == _ */
+      // 
+      //   input:!"abcd"
+      //   !
+      //   output: _
+      //
+      //   /* spoiler: "abcd" *output == _ */
+      // input - any object, day or night
+      // output - NOT THE INPUT ;)
+
+      // If it's a falsey value, unwrap it
+      if (inputs[0].get("code").get("type") === "falsey")
+      {
+        parsedResult = inputs[0].get("code").get("value");
+      }
+      else
+      {
+        // Use the original parser to turn host language (js) result into
+        // concrete result
+        parsedResult = parser.parseBlock("!'temp'");
 
         // Make into immutable
         parsedResult = Immutable.fromJS(parsedResult);
+        
+        // Dispose of the temp inner block and use the input
+        parsedResult = parsedResult.setIn(
+          ["code", "value"],
+          inputs[0]);
+      }
+    }
+
+    // If parsedResult hasn't been set yet
+    if (! parsedResult)
+    {
+      // Well, result not being set yet is an error
+      if (! result && result !== 0)
+      {
+        throw new Error("RuntimeError: Unhandled operator " + operator);
       }
 
+      // Use the original parser to turn JS result into concrete result
+      parsedResult = parser.parseBlock("" + result);
+
+      // Make into immutable
+      parsedResult = Immutable.fromJS(parsedResult);
+    }
+
+    immutableConcreteJson = 
+      immutableConcreteJson.setIn(
+        ["callStack", stackLevel, "blocks", runnerIndex + 1, "code"],
+        parsedResult.get("code"));
+
+    // Are we at the base call stack level?
+    if (stackLevel === 0)
+    {
+      // Yes, so also edit the top-layer blocks
       immutableConcreteJson = 
         immutableConcreteJson.setIn(
-          ["callStack", stackLevel, "blocks", runnerIndex + 1, "code"],
+          ["blocks", runnerIndex + 1, "code"],
           parsedResult.get("code"));
-
-      // Are we at the base call stack level?
-      if (stackLevel === 0)
-      {
-        // Yes, so also edit the top-layer blocks
-        immutableConcreteJson = 
-          immutableConcreteJson.setIn(
-            ["blocks", runnerIndex + 1, "code"],
-            parsedResult.get("code"));
-      }
-      break;
-    default :
-      // Unrecognized block!
-      throw new Error(
-        "RuntimeError: Unrecognized block of type " +
-        blockToRun.get("code").get("type"));
     }
+    break;
+  default :
+    // Unrecognized block!
+    throw new Error(
+      "RuntimeError: Unrecognized block of type " +
+      blockToRun.get("code").get("type"));
   }
 
   // Move the runner to the next block

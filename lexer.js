@@ -129,28 +129,11 @@ function applyLexicalScope(immutableConcreteJson, parentEnv, args)
           }));
     }
 
-    // Is it a simple block?
-    if ((typeof immutableConcreteJson.getIn(["blocks", index, "code"])) === "string")
-    {
-      // Is this is one of the reserved words?
-      if (-1 != RESERVED_WORDS.indexOf(
-          immutableConcreteJson.getIn(["blocks", index, "code"])))
-      {
-        // Yes, so do nothing
-        continue;
-      }
-
-      // No, so it must be a previously defined word or error
-      // TODO: Remove when call by reference is implemented
-      throw new Error("Call by reference not implemented");
-      // referencesToCheck.push(immutableConcreteJson.getIn(["blocks", index, "code"]));
-      continue;
-    }
-
     // It's a complex block so switch on the block's type
     switch (immutableConcreteJson.getIn(["blocks", index, "code", "type"]))
     {
     // Values which do not increase scope or reference scope
+    case "reserved":
     case "number" :
     case "string" :
     case "operator" :

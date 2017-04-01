@@ -136,7 +136,12 @@
     }
 
   Blank
-    = "_"
+    = "_" {
+      return {
+        type: "reserved",
+        value: "blank"
+      }
+    }
 
   Number
     = DecimalNumber
@@ -285,62 +290,17 @@
     = Pc
 
   ReservedWord
-    = ReservedToken { return text(); }
+    = ReservedToken {
+      return {
+        type: "reserved",
+        value: text()
+      }
+    }
 
   ReservedToken
     = ReturnToken
     / CallToken 
     / ApplyToken
-
-  JavaScriptReservedWord
-    = Keyword
-    / FutureReservedWord
-    / NullLiteral
-    / BooleanLiteral
-
-  Keyword
-    = BreakToken
-    / CaseToken
-    / CatchToken
-    / ContinueToken
-    / DebuggerToken
-    / DefaultToken
-    / DeleteToken
-    / DoToken
-    / ElseToken
-    / FinallyToken
-    / ForToken
-    / FunctionToken
-    / IfToken
-    / InstanceofToken
-    / InToken
-    / NewToken
-    / ReturnToken
-    / SwitchToken
-    / ThisToken
-    / ThrowToken
-    / TryToken
-    / TypeofToken
-    / VarToken
-    / VoidToken
-    / WhileToken
-    / WithToken
-
-  FutureReservedWord
-    = ClassToken
-    / ConstToken
-    / EnumToken
-    / ExportToken
-    / ExtendsToken
-    / ImportToken
-    / SuperToken
-
-  NullLiteral
-    = NullToken
-
-  BooleanLiteral
-    = TrueToken
-    / FalseToken
 
   StringLiteral "string"
     = '"' chars:DoubleStringCharacter* '"' { return chars.join(""); }
@@ -507,44 +467,9 @@
 
   /* Tokens */
 
-  BreakToken      = "break"      !IdentifierPart
-  CaseToken       = "case"       !IdentifierPart
-  CatchToken      = "catch"      !IdentifierPart
-  ClassToken      = "class"      !IdentifierPart
-  ConstToken      = "const"      !IdentifierPart
-  ContinueToken   = "continue"   !IdentifierPart
-  DebuggerToken   = "debugger"   !IdentifierPart
-  DefaultToken    = "default"    !IdentifierPart
-  DeleteToken     = "delete"     !IdentifierPart
-  DoToken         = "do"         !IdentifierPart
-  ElseToken       = "else"       !IdentifierPart
-  EnumToken       = "enum"       !IdentifierPart
-  ExportToken     = "export"     !IdentifierPart
-  ExtendsToken    = "extends"    !IdentifierPart
-  FalseToken      = "false"      !IdentifierPart
-  FinallyToken    = "finally"    !IdentifierPart
-  ForToken        = "for"        !IdentifierPart
-  FunctionToken   = "function"   !IdentifierPart
-  IfToken         = "if"         !IdentifierPart
-  ImportToken     = "import"     !IdentifierPart
-  InstanceofToken = "instanceof" !IdentifierPart
-  InToken         = "in"         !IdentifierPart
-  NewToken        = "new"        !IdentifierPart
-  NullToken       = "null"       !IdentifierPart
   ReturnToken     = "return"     !IdentifierPart
   CallToken       = "call"       !IdentifierPart
   ApplyToken      = "apply"      !IdentifierPart
-  SuperToken      = "super"      !IdentifierPart
-  SwitchToken     = "switch"     !IdentifierPart
-  ThisToken       = "this"       !IdentifierPart
-  ThrowToken      = "throw"      !IdentifierPart
-  TrueToken       = "true"       !IdentifierPart
-  TryToken        = "try"        !IdentifierPart
-  TypeofToken     = "typeof"     !IdentifierPart
-  VarToken        = "var"        !IdentifierPart
-  VoidToken       = "void"       !IdentifierPart
-  WhileToken      = "while"      !IdentifierPart
-  WithToken       = "with"       !IdentifierPart
 
   /* Skipped */
 
