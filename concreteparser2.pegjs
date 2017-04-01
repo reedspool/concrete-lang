@@ -73,7 +73,6 @@
     / Operator
     / Blank
     / ReservedWord
-    / End
 
   Value
     = Number
@@ -101,7 +100,7 @@
     }
 
   Operator
-    = Identifier
+    = CallIdentifier
     / UnaryOperator
     / BinaryOperator
     / TrinaryOperator
@@ -139,9 +138,6 @@
   Blank
     = "_"
 
-  End
-    = "END"
-
   Number
     = DecimalNumber
       / IntegerNumber
@@ -150,11 +146,13 @@
   DecimalNumber = neg:("-")? number:([0-9]* "." [0-9]+) {
     // Got Halfway to more numbers and stopped
     // /(([0-9]+)|([0-9]+(\.[0-9]+))|([0-9]+[eE][0-9]+)
+    console.log(number[0].join("")+number[1]+number[2].join(""));
     return {
       type: "number",
-      value: parseFloat(number.join(''), 10) * (extractOptional(neg, 0) ? -1 : 1)
+      value: parseFloat(number[0].join("")+number[1]+number[2].join(""), 10) * (extractOptional(neg, 0) ? -1 : 1)
     }
   }
+
 
   IntegerNumber = neg:("-")? int:([0-9])+ {
       return {
@@ -241,6 +239,14 @@
   SingleLineComment
     = "//" (!LineTerminator SourceCharacter)*
 
+  CallIdentifier
+    = !ReservedWord name:IdentifierName { 
+      return {
+        type: "callIdentifier",
+        value: text()
+      }
+    }
+
   Identifier
     = !ReservedWord name:IdentifierName { return name; }
 
@@ -250,11 +256,11 @@
   IdentifierStart
     = UnicodeLetter
     / "$"
-    / "_"
     / "\\" sequence:UnicodeEscapeSequence { return sequence; }
 
   IdentifierPart
     = IdentifierStart
+    / "-"
     / UnicodeCombiningMark
     / UnicodeDigit
     / UnicodeConnectorPunctuation
@@ -285,6 +291,7 @@
   ReservedToken
     = ReturnToken
     / CallToken 
+    / ApplyToken
 
   JavaScriptReservedWord
     = Keyword
@@ -527,6 +534,7 @@
   NullToken       = "null"       !IdentifierPart
   ReturnToken     = "return"     !IdentifierPart
   CallToken       = "call"       !IdentifierPart
+  ApplyToken      = "apply"      !IdentifierPart
   SuperToken      = "super"      !IdentifierPart
   SwitchToken     = "switch"     !IdentifierPart
   ThisToken       = "this"       !IdentifierPart

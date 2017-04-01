@@ -45,8 +45,7 @@ function executeStepIn(concreteJson)
   var codeToRun;
   var parsedResult;
   var result;
-  var index;
-  var index2;
+  var runnerIndex;
   var blockToRun;
   var prevStackLevel;
   var prevIndex;
@@ -60,7 +59,6 @@ function executeStepIn(concreteJson)
   var operator;
   var inputIndex;
   var nextInput;
-  var foldToCall;
 
   // Coerce to Immutable
   if (concreteJson instanceof Immutable.Map)
@@ -233,12 +231,12 @@ function executeStepIn(concreteJson)
       .getIn(["callStack", stackLevel, "blocks"]);
 
   // Discover which block the runner will run
-  index =
+  runnerIndex =
     immutableConcreteJson
       .getIn(["callStack", stackLevel, "runner", "index"]);
 
   // Find the block underneath the runner
-  blockToRun = codeToRun.get(index);
+  blockToRun = codeToRun.get(runnerIndex);
 
   // If there's no block here...
   if (! blockToRun) 
@@ -263,169 +261,8 @@ function executeStepIn(concreteJson)
 
     case "apply":
     case "call" :
-      // Do call things
-      //   increase stack level by 1
-      //   If applying, singular input must be of type fold
-      //       look for formal args and declare and define them
-      //   If calling, singular input can be any value
-      //       look for formal args and declare and define them all,
-      //       redefine first formal arg to the input val
-      stackLevel = stackLevel + 1;
-
-      // Can't call at the beginning of a tape, input required!
-      if (index < 2)
-      {
-        throw new Error(
-          "RuntimeError: Call/apply without required fold and input at index " +
-          index);
-      }
-
-      // Create a new stack frame
-      immutableConcreteJson =
-        immutableConcreteJson
-          .setIn(
-            ["callStack", stackLevel],
-            Immutable.fromJS(
-            {
-              frameId: enumFrameId++,
-              blocks: {},
-              argumentBlocks: {},
-              environment: {},
-              input: {},
-              runner:
-              {
-                index: 0,
-                stackLevel: stackLevel
-              }
-            }));
-
-      // Set the global stack level
-      immutableConcreteJson =
-        immutableConcreteJson.set("stackLevel", stackLevel);
-
-      // Find the location of the block
-      foldToCall = codeToRun.get(index - 1);
-
-      // The fold to call must be a fold!
-      if (! foldToCall || typeof foldToCall.get("code") === "string")
-      {
-        throw new Error(
-          "RuntimeError: Call or apply must have a fold as first input");
-      }
-
-      // If foldToCall is a valueReference, deference it
-      // It's a complex block so switch on the block's type
-      switch (foldToCall.getIn(["code", "type"]))
-      {
-      // These cases are direct references, they should be represented 
-      // in environment
-      case "fold" :
-        // If it's a fold, it's gold!
-        break;
-      case "valueReference" :
-        foldToCall = dereferenceValueBlock(
-          foldToCall.getIn(["code", "value"]));
-
-        // If it's STILL not a fold, that's gonna be a problem
-        if ((typeof foldToCall.get("code") === "string") || 
-              foldToCall.getIn(["code", "type"]) !== "fold")
-        {
-          throw new Error(
-            "RuntimeError: Call or apply input was value reference that did" +
-            " not resolve to fold");
-        }
-        break;
-      default :
-        throw new Error(
-          "RuntimeError: Call or apply must have a fold as first input");
-        break;
-      }
-
-      // Add the blocks from the tape to the stack frame  
-      immutableConcreteJson = 
-        immutableConcreteJson.setIn(
-          ["callStack", stackLevel, "blocks"],
-          foldToCall.getIn(["code", "tape", "blocks"]));
-
-      // Add the lexical environment from the tape to the stack frame  
-      immutableConcreteJson = 
-        immutableConcreteJson.setIn(
-          ["callStack", stackLevel, "environment"],
-          foldToCall.getIn(["code", "tape", "environment"]));
-
-      // Find the location of the input
-      nextInput = codeToRun.get(index - 2);
-
-      // Can't call at the beginning of a tape, input required!
-      if (! nextInput)
-      {
-        throw new Error(
-          "RuntimeError: Call/apply without input at index " + index);
-      }
-
-      // If we're doing an apply, the input must be of type fold
-      if (blockToRun.get("code") === "apply" && 
-          (typeof nextInput.get("code") === "string" ||
-            nextInput.getIn(["code", "type"]) !== "fold"))
-      {
-        throw new Error("RuntimeError: Apply input must be a fold");
-      }
-      
-      // If there are arguments on the fold...
-      if (foldToCall.getIn(["code", "args"]) &&
-          foldToCall.getIn(["code", "args", "blocks"]).size > 0)
-      {
-debugger;
-        // If it's a call
-        if (blockToRun.get("code") === "call")
-        {
-          // Just throw the input in the first place
-          immutableConcreteJson = 
-            immutableConcreteJson.setIn(
-              ["callStack", stackLevel, "argumentBlocks", 0],
-              nextInput);
-
-          // Set the name to the name of the formal argument
-          immutableConcreteJson = 
-            immutableConcreteJson.setIn(
-              ["callStack", stackLevel, "argumentBlocks", 0, "name"],
-              foldToCall.getIn(["code", "args", "blocks", 0, "name"]));
-        }
-        else
-        {
-          // It's an apply, so run through each block in the arg fold
-          for (
-            index2 = 0;
-            index2 < foldToCall.getIn(["code", "args", "blocks"]).size;
-            index2++)
-          {
-            // Set the argument block at that index
-            immutableConcreteJson = 
-              immutableConcreteJson.setIn(
-                ["callStack", stackLevel, "argumentBlocks", index2],
-                nextInput.getIn(["code", "tape", "blocks", index2]));
- 
-            // Set the name
-            immutableConcreteJson = 
-              immutableConcreteJson.setIn(
-                ["callStack", stackLevel, "argumentBlocks", index2, "name"],
-                foldToCall.getIn(["code", "args", "blocks", index2, "name"]));
-          }
-        }
-      }
-
-      // Either way, put the whole thing in the input slot
-      immutableConcreteJson = 
-        immutableConcreteJson.setIn(
-          ["callStack", stackLevel, "input"],
-          nextInput);
-
-      // Done stepping into new function call
-      // Flip the flag back
-      // Increment the step counter
-      immutableConcreteJson = immutableConcreteJson.set("midStep", false);
-      immutableConcreteJson = immutableConcreteJson.set("step", step + 1);
-      return immutableConcreteJson;
+      return callOrApplyAndEnterNewFrame(
+        immutableConcreteJson, stackLevel, runnerIndex, enumFrameId++, codeToRun);
       break;
     default :
       // TODO: It's an identifier, do identifier things
@@ -451,6 +288,10 @@ debugger;
       // Do nothing
       break;
     // A thing to do!
+    case "callIdentifier" :
+      return callOrApplyAndEnterNewFrame(
+        immutableConcreteJson, stackLevel, runnerIndex, enumFrameId++, codeToRun);
+      break;
     case "operator" :
       inputs = [];
       result;
@@ -462,7 +303,7 @@ debugger;
         inputIndex <= blockToRun.get("code").get("countInputs");
         inputIndex++)
       {
-        nextInput = codeToRun.get(index - inputIndex);
+        nextInput = codeToRun.get(runnerIndex - inputIndex);
 
         if (! nextInput)
         {
@@ -754,7 +595,7 @@ debugger;
 
       immutableConcreteJson = 
         immutableConcreteJson.setIn(
-          ["callStack", stackLevel, "blocks", index + 1, "code"],
+          ["callStack", stackLevel, "blocks", runnerIndex + 1, "code"],
           parsedResult.get("code"));
 
       // Are we at the base call stack level?
@@ -763,7 +604,7 @@ debugger;
         // Yes, so also edit the top-layer blocks
         immutableConcreteJson = 
           immutableConcreteJson.setIn(
-            ["blocks", index + 1, "code"],
+            ["blocks", runnerIndex + 1, "code"],
             parsedResult.get("code"));
       }
       break;
@@ -777,7 +618,7 @@ debugger;
 
   // Move the runner to the next block
   immutableConcreteJson = immutableConcreteJson.setIn(
-    ["callStack", stackLevel, "runner", "index"], index + 1);
+    ["callStack", stackLevel, "runner", "index"], runnerIndex + 1);
 
   // Flip the flag back
   // Increment the step counter
@@ -810,7 +651,7 @@ debugger;
       immutableConcreteJson =
         immutableConcreteJson.set(
           "result",
-          codeToRun.get(index - 1));
+          codeToRun.get(runnerIndex - 1));
     }
     else
     {
@@ -826,7 +667,7 @@ debugger;
       immutableConcreteJson = 
         immutableConcreteJson.setIn(
           ["callStack", prevStackLevel, "blocks", prevIndex + 1, "code"],
-          codeToRun.get(index - 1).get("code"));
+          codeToRun.get(runnerIndex - 1).get("code"));
 
       // Now that the output is placed, check if we're going for stack level 0
       if (prevStackLevel === 0)
@@ -858,6 +699,194 @@ debugger;
     }
 
     // Done with step
+    // Flip the flag back
+    // Increment the step counter
+    immutableConcreteJson = immutableConcreteJson.set("midStep", false);
+    immutableConcreteJson = immutableConcreteJson.set("step", step + 1);
+    return immutableConcreteJson;
+  }
+
+  // Do call things
+  //   increase stack level by 1
+  //   If applying, singular input must be of type fold
+  //       look for formal args and declare and define them
+  //   If calling, singular input can be any value
+  //       look for formal args and declare and define them all,
+  //       redefine first formal arg to the input val
+  function callOrApplyAndEnterNewFrame(
+    immutableConcreteJson, stackLevel, runnerIndex, nextFrameId, codeToRun)
+  {
+    var argIndex;
+    var foldToCall;
+    var anInput;
+
+    stackLevel = stackLevel + 1;
+
+    // Create a new stack frame
+    immutableConcreteJson =
+      immutableConcreteJson
+        .setIn(
+          ["callStack", stackLevel],
+          Immutable.fromJS(
+          {
+            frameId: nextFrameId,
+            blocks: {},
+            argumentBlocks: {},
+            environment: {},
+            input: {},
+            runner:
+            {
+              index: 0,
+              stackLevel: stackLevel
+            }
+          }));
+
+    // Set the global stack level
+    immutableConcreteJson =
+      immutableConcreteJson.set("stackLevel", stackLevel);
+
+    if (blockToRun.getIn(["code", "type"]) == "callIdentifier")
+    {
+      // The fold to call is thus the result of dereferencing the ref
+      foldToCall = dereferenceValueBlock(
+        blockToRun.getIn(["code", "value"]));
+    }
+    else
+    {
+      // Can't call at the beginning of a tape, input required!
+      if (runnerIndex < 2)
+      {
+        throw new Error(
+          "RuntimeError: Call/apply without required fold and input at index " +
+          runnerIndex);
+      }
+
+      // It's a call or apply, so the fold is prior block
+      foldToCall = codeToRun.get(runnerIndex - 1);
+    }
+
+    // The fold to call must be a fold!
+    if (! foldToCall || typeof foldToCall.get("code") === "string")
+    {
+      throw new Error(
+        "RuntimeError: Call or apply must have a fold as first input");
+    }
+
+    // If foldToCall is a valueReference, deference it
+    // It's a complex block so switch on the block's type
+    switch (foldToCall.getIn(["code", "type"]))
+    {
+    // These cases are direct references, they should be represented 
+    // in environment
+    case "fold" :
+      // If it's a fold, it's gold!
+      break;
+    case "valueReference" :
+      foldToCall = dereferenceValueBlock(
+        foldToCall.getIn(["code", "value"]));
+
+      // If it's STILL not a fold, that's gonna be a problem
+      if ((typeof foldToCall.get("code") === "string") || 
+            foldToCall.getIn(["code", "type"]) !== "fold")
+      {
+        throw new Error(
+          "RuntimeError: Call or apply input was value reference that did" +
+          " not resolve to fold");
+      }
+      break;
+    default :
+      throw new Error(
+        "RuntimeError: Call or apply must have a fold as first input");
+      break;
+    }
+
+    // Add the blocks from the tape to the stack frame  
+    immutableConcreteJson = 
+      immutableConcreteJson.setIn(
+        ["callStack", stackLevel, "blocks"],
+        foldToCall.getIn(["code", "tape", "blocks"]));
+
+    // Add the lexical environment from the tape to the stack frame  
+    immutableConcreteJson = 
+      immutableConcreteJson.setIn(
+        ["callStack", stackLevel, "environment"],
+        foldToCall.getIn(["code", "tape", "environment"]));
+
+    // Find the location of the input
+    if (blockToRun.getIn(["code", "type"]) == "callIdentifier")
+    {
+      anInput = codeToRun.get(runnerIndex - 1);
+    }
+    else
+    {
+      anInput = codeToRun.get(runnerIndex - 2);
+    }
+
+    // Can't call at the beginning of a tape, input required!
+    if (! anInput)
+    {
+      throw new Error(
+        "RuntimeError: Call/apply without input at index " + runnerIndex);
+    }
+
+    // If we're doing an apply, the input must be of type fold
+    if (blockToRun.get("code") === "apply" && 
+        (typeof anInput.get("code") === "string" ||
+          anInput.getIn(["code", "type"]) !== "fold"))
+    {
+      throw new Error("RuntimeError: Apply input must be a fold");
+    }
+    
+    // If there are arguments on the fold...
+    if (foldToCall.getIn(["code", "args"]) &&
+        foldToCall.getIn(["code", "args", "blocks"]).size > 0)
+    {
+
+      if (blockToRun.getIn(["code", "type"]) == "callIdentifier"
+        || blockToRun.get("code") == "call")
+      {
+        // Just throw the input in the first place
+        immutableConcreteJson = 
+          immutableConcreteJson.setIn(
+            ["callStack", stackLevel, "argumentBlocks", 0],
+            anInput);
+
+        // Set the name to the name of the formal argument
+        immutableConcreteJson = 
+          immutableConcreteJson.setIn(
+            ["callStack", stackLevel, "argumentBlocks", 0, "name"],
+            foldToCall.getIn(["code", "args", "blocks", 0, "name"]));
+      }
+      else
+      {
+        // It's an apply, so run through each block in the arg fold
+        for (
+          argIndex = 0;
+          argIndex < foldToCall.getIn(["code", "args", "blocks"]).size;
+          argIndex++)
+        {
+          // Set the argument block at that index
+          immutableConcreteJson = 
+            immutableConcreteJson.setIn(
+              ["callStack", stackLevel, "argumentBlocks", argIndex],
+              anInput.getIn(["code", "tape", "blocks", argIndex]));
+
+          // Set the name
+          immutableConcreteJson = 
+            immutableConcreteJson.setIn(
+              ["callStack", stackLevel, "argumentBlocks", argIndex, "name"],
+              foldToCall.getIn(["code", "args", "blocks", argIndex, "name"]));
+        }
+      }
+    }
+
+    // Either way, put the whole thing in the input slot
+    immutableConcreteJson = 
+      immutableConcreteJson.setIn(
+        ["callStack", stackLevel, "input"],
+        nextInput);
+
+    // Done stepping into new function call
     // Flip the flag back
     // Increment the step counter
     immutableConcreteJson = immutableConcreteJson.set("midStep", false);

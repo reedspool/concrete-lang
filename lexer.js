@@ -155,6 +155,7 @@ function applyLexicalScope(immutableConcreteJson, parentEnv, args)
     case "string" :
     case "operator" :
     case "blank" :
+    case "callIdentifier" :
       // Do nothing
       break;
 
@@ -187,7 +188,7 @@ function applyLexicalScope(immutableConcreteJson, parentEnv, args)
       // Unrecognized block!
       throw new Error(
         "Lexical analyzer doesn't recognize block of type " +
-        immutableConcreteJson.getIn(["blocks", index, "type"]));
+        immutableConcreteJson.getIn(["blocks", index, "code", "type"]));
     }
   }
 

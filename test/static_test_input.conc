@@ -71,9 +71,14 @@ d:5 *d, 4 - e:_ [ d:2 *d, *e + _ ] call _
 
 f:[ 3, 4 + _ ] _, *f call _
 
+/* Calls with callable identifier */
+
+f:[ 3, 4 + _ ] _ f _
+
 /* Call with formal arguments */
 
 5, f:( a:_ )[ *a, 3 + _ ] call _
+f:( a:_ b:_ )[ *a, *b + _ ] 5, 6 f _
 
 /* Apply with no arguments */
 

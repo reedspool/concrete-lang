@@ -208,6 +208,7 @@ function prettyBlock(concreteJson, options)
         immutableConcreteJson.get("code").get("tape"), options) +
       " ]";
     break;
+  case "callIdentifier" :
   case "number" :
     blockStr = immutableConcreteJson.get("code").get("value");
     break;
