@@ -311,9 +311,10 @@ function executeStepIn(concreteJson)
 
       // Dereference reference values
 
-      // Is it a simple block?
-      if (typeof nextInput.get("code") === "string")
+      // It's a complex block so switch on the block's type
+      switch (nextInput.getIn(["code", "type"]))
       {
+      case "reserved" :
         // Is this is one of the reserved words?
         if (-1 != RESERVED_WORDS.indexOf(
             nextInput.get("code")))
@@ -335,23 +336,18 @@ function executeStepIn(concreteJson)
             : ". Perhaps you meant the address reference, @") +
           nextInput.get("code") +
           "?");
+        break;
+      // These cases are direct references, they should be represented 
+      // in environment
+      case "valueReference" :
+        nextInput = dereferenceValueBlock(
+          nextInput.getIn(["code", "value"]));
+        break;
+      default :
+        // Do nothing, it's just a normal value.
+        break;
       }
-      else
-      {
-        // It's a complex block so switch on the block's type
-        switch (nextInput.getIn(["code", "type"]))
-        {
-        // These cases are direct references, they should be represented 
-        // in environment
-        case "valueReference" :
-          nextInput = dereferenceValueBlock(
-            nextInput.getIn(["code", "value"]));
-          break;
-        default :
-          // Do nothing, it's just a normal value.
-          break;
-        }
-      }
+    
 
       // Front-load it, so left-most, top-most input is always first
       inputs.unshift(nextInput);
@@ -841,7 +837,9 @@ function executeStepIn(concreteJson)
     {
 
       if (blockToRun.getIn(["code", "type"]) == "callIdentifier"
-        || blockToRun.get("code") == "call")
+        || (
+          blockToRun.get("code").get("type") == "reserved"
+          && blockToRun.get("code").get("value") == "call"))
       {
         // Just throw the input in the first place
         immutableConcreteJson = 
