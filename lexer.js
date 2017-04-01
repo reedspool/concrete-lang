@@ -155,11 +155,11 @@ function applyLexicalScope(immutableConcreteJson, parentEnv, args)
     case "string" :
     case "operator" :
     case "blank" :
-    case "callIdentifier" :
       // Do nothing
       break;
 
     // These cases are direct references, they should be represented in environment
+    case "callIdentifier" :
     case "valueReference" :
     case "address" :
       referencesToCheck.push(
