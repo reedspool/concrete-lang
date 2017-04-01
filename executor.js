@@ -315,28 +315,12 @@ function executeStepIn(concreteJson)
       switch (nextInput.getIn(["code", "type"]))
       {
       case "reserved" :
-        // Is this is one of the reserved words?
-        if (-1 != RESERVED_WORDS.indexOf(
-            nextInput.get("code")))
-        {
-          throw new Error(
-            "RuntimeError: Reserved word " + 
-            nextInput.get("code") +
-            " used as input for " + operator);
-        }
-
-        // TODO: Implement call references
-        // Offer a hint
         throw new Error(
-          "RuntimeError: Identifier " + 
-          nextInput.get("code") +
-          " used as input for " + operator +
-          ((Math.random() < 0.5)
-            ? ". Perhaps you meant the value reference, *"
-            : ". Perhaps you meant the address reference, @") +
-          nextInput.get("code") +
-          "?");
+          "RuntimeError: Reserved word " + 
+          nextInput.get("code").get("value") +
+          " used as input for " + operator);
         break;
+      // case "callIdentifier" : // Future: There's no real reason a call identifier can't be used as a value ref... hmmmm
       // These cases are direct references, they should be represented 
       // in environment
       case "valueReference" :
@@ -347,7 +331,6 @@ function executeStepIn(concreteJson)
         // Do nothing, it's just a normal value.
         break;
       }
-    
 
       // Front-load it, so left-most, top-most input is always first
       inputs.unshift(nextInput);
@@ -385,7 +368,6 @@ function executeStepIn(concreteJson)
               case "falsey" :
               case "fold" :
               case "operator" :
-              case "valueReference" :
                 throw new Error(
                   "RuntimeError: " +
                   inputBlock.getIn(["code", "type"]) +
@@ -759,8 +741,8 @@ function executeStepIn(concreteJson)
       foldToCall = codeToRun.get(runnerIndex - 1);
     }
 
-    // The fold to call must be a fold!
-    if (! foldToCall || typeof foldToCall.get("code") === "string")
+    // There must be an input to call!
+    if (! foldToCall)
     {
       throw new Error(
         "RuntimeError: Call or apply must have a fold as first input");
